@@ -1,0 +1,26 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+*.out
+
+# vendor/
+
+go.work
+
+go.sum
+
+.idea/
+.vscode/
+*.swp
+
+*.log
+
+*.tmp
+*.temp
+
+bin/
+obj/
