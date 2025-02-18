@@ -1,0 +1,4 @@
+# Sample configuration file for Jumpstart Project
+
+kafka:
+  cluster: kafka:9092
