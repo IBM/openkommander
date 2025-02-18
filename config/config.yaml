@@ -1,4 +1,2 @@
-# Sample configuration file for Jumpstart Project
-
 kafka:
-  cluster: kafka:9092
+  broker: kafka:9093
