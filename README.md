@@ -1,6 +1,6 @@
 # OpenKommander
 
-OpenKommander is a CLI tool for managing and interacting with Apache Kafka clusters.
+OpenKommander is a command line utility and admin UI for Apache Kafka compatible brokers.
 
 ## Prerequisites
 
