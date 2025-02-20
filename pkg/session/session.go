@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"openkommander/pkg/cluster"
+	"github.com/IBM/openkommander/pkg/cluster"
 
 	"github.com/IBM/sarama"
 	"github.com/spf13/viper"

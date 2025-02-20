@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 
-	"openkommander/pkg/session"
+	"github.com/IBM/openkommander/pkg/session"
 
 	"github.com/IBM/sarama"
 )
