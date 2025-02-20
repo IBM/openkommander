@@ -1,4 +1,4 @@
-module openkommander
+module github.com/IBM/openkommander
 
 go 1.23
 
