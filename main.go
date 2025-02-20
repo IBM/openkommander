@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 
-	"openkommander/pkg/commands"
-	_ "openkommander/pkg/commands"
+	"github.com/IBM/openkommander/pkg/commands"
 )
 
 func main() {

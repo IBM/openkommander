@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"openkommander/pkg/session"
+	"github.com/IBM/openkommander/pkg/session"
 )
 
 func init() {
