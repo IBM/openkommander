@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"openkommander/pkg/session"
+	"github.com/IBM/openkommander/pkg/session"
 
 	"github.com/IBM/sarama"
 )
