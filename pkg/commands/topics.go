@@ -1,20 +1,15 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/IBM/openkommander/pkg/session"
-
 	"github.com/IBM/sarama"
 )
-
-func init() {
-	Register("Topics Management", "topic-create", createTopicCommand)
-	Register("Topics Management", "topic-delete", deleteTopicCommand)
-	Register("Topics Management", "topic-list", listTopicsCommand)
-}
 
 func createTopicCommand() {
 	currentSession := session.GetCurrentSession()
@@ -25,8 +20,14 @@ func createTopicCommand() {
 
 	client := currentSession.GetAdminClient()
 	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
-		return
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := currentSession.Connect(ctx)
+		if err != nil {
+			fmt.Printf("Error connecting to cluster: %v\n", err)
+			return
+		}
+		client = currentSession.GetAdminClient()
 	}
 
 	fmt.Print("Enter topic name: ")
@@ -86,8 +87,14 @@ func deleteTopicCommand() {
 
 	client := currentSession.GetAdminClient()
 	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
-		return
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := currentSession.Connect(ctx)
+		if err != nil {
+			fmt.Printf("Error connecting to cluster: %v\n", err)
+			return
+		}
+		client = currentSession.GetAdminClient()
 	}
 
 	fmt.Print("Enter topic name to delete: ")
@@ -117,8 +124,14 @@ func listTopicsCommand() {
 
 	client := currentSession.GetAdminClient()
 	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
-		return
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := currentSession.Connect(ctx)
+		if err != nil {
+			fmt.Printf("Error connecting to cluster: %v\n", err)
+			return
+		}
+		client = currentSession.GetAdminClient()
 	}
 
 	topics, err := client.ListTopics()

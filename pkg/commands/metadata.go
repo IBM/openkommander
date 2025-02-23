@@ -1,30 +1,31 @@
 package commands
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/IBM/openkommander/pkg/session"
-
 	"github.com/IBM/sarama"
 )
 
-func init() {
-	Register("Cluster Data", "metadata", metadataCommand)
-}
-
 func metadataCommand() {
 	currentSession := session.GetCurrentSession()
-
 	if !currentSession.IsAuthenticated() {
 		fmt.Println("Error: no session found.")
 		return
 	}
 
 	client := currentSession.GetClient()
-
 	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
-		return
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := currentSession.Connect(ctx)
+		if err != nil {
+			fmt.Printf("Error connecting to cluster: %v\n", err)
+			return
+		}
+		client = currentSession.GetClient()
 	}
 
 	brokers := client.Brokers()
