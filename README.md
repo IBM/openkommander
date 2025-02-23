@@ -96,6 +96,11 @@ All commands start with prefix `ok`
    make install
    ```
 
+   Note: It may fail due to permission if needed add `sudo` for example
+   ```bash
+   sudo make install
+   ```
+
 3. Connect to the cluster:
    ```bash
    $ ok login
