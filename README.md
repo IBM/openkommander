@@ -120,7 +120,7 @@ All commands start with prefix `ok`
     - kafka:9093 (ID: 1)
    ```
 
-5. End session and exit:
+6. End session and exit:
    ```bash
    $ ok logout
    Logged out successfully!
