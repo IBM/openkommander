@@ -1,11 +1,9 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/IBM/openkommander/pkg/session"
 	"github.com/IBM/sarama"
@@ -18,16 +16,10 @@ func createTopicCommand() {
 		return
 	}
 
-	client := currentSession.GetAdminClient()
-	if client == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, err := currentSession.Connect(ctx)
-		if err != nil {
-			fmt.Printf("Error connecting to cluster: %v\n", err)
-			return
-		}
-		client = currentSession.GetAdminClient()
+	client, err := currentSession.GetAdminClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
+		return
 	}
 
 	fmt.Print("Enter topic name: ")
@@ -64,7 +56,7 @@ func createTopicCommand() {
 		ReplicationFactor: int16(replicationFactor),
 	}
 
-	err := client.CreateTopic(topicName, topicDetail, false)
+	err = client.CreateTopic(topicName, topicDetail, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "Topic with this name already exists") {
 			fmt.Printf("Topic '%s' already exists\n", topicName)
@@ -85,16 +77,10 @@ func deleteTopicCommand() {
 		return
 	}
 
-	client := currentSession.GetAdminClient()
-	if client == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, err := currentSession.Connect(ctx)
-		if err != nil {
-			fmt.Printf("Error connecting to cluster: %v\n", err)
-			return
-		}
-		client = currentSession.GetAdminClient()
+	client, err := currentSession.GetAdminClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
+		return
 	}
 
 	fmt.Print("Enter topic name to delete: ")
@@ -106,7 +92,7 @@ func deleteTopicCommand() {
 		return
 	}
 
-	err := client.DeleteTopic(topicName)
+	err = client.DeleteTopic(topicName)
 	if err != nil {
 		fmt.Printf("Error deleting topic: %v\n", err)
 		return
@@ -122,16 +108,10 @@ func listTopicsCommand() {
 		return
 	}
 
-	client := currentSession.GetAdminClient()
-	if client == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, err := currentSession.Connect(ctx)
-		if err != nil {
-			fmt.Printf("Error connecting to cluster: %v\n", err)
-			return
-		}
-		client = currentSession.GetAdminClient()
+	client, err := currentSession.GetAdminClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
+		return
 	}
 
 	topics, err := client.ListTopics()

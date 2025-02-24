@@ -1,2 +1,5 @@
 kafka:
   broker: kafka:9093
+
+openkommander:
+  session_filename: .openkommander_config

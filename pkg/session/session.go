@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/IBM/openkommander/pkg/cluster"
-
+	"github.com/IBM/openkommander/pkg/constants"
 	"github.com/IBM/sarama"
 	"github.com/spf13/viper"
 )
@@ -19,8 +19,8 @@ type Session interface {
 	Info() string
 	Connect(ctx context.Context) (sarama.Client, error)
 	Disconnect()
-	GetClient() sarama.Client
-	GetAdminClient() sarama.ClusterAdmin
+	GetClient() (sarama.Client, error)
+	GetAdminClient() (sarama.ClusterAdmin, error)
 	IsAuthenticated() bool
 }
 
@@ -29,6 +29,11 @@ type session struct {
 	client          sarama.Client
 	adminClient     sarama.ClusterAdmin
 	isAuthenticated bool
+}
+
+type SessionData struct {
+	Brokers         []string `json:"brokers"`
+	IsAuthenticated bool     `json:"isAuthenticated"`
 }
 
 func (s *session) Info() string {
@@ -67,19 +72,32 @@ func (s *session) IsAuthenticated() bool {
 	return s.isAuthenticated
 }
 
-func (s *session) GetClient() sarama.Client {
-	if s.client == nil {
-		return nil
+func (s *session) GetClient() (sarama.Client, error) {
+	if s.client != nil {
+		return s.client, nil
 	}
-	return s.client
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := s.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
-func (s *session) GetAdminClient() sarama.ClusterAdmin {
-	if s.adminClient == nil {
-		return nil
+func (s *session) GetAdminClient() (sarama.ClusterAdmin, error) {
+	if s.adminClient != nil {
+		return s.adminClient, nil
 	}
-
-	return s.adminClient
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	adminClient, err := cluster.NewCluster(s.brokers).ConnectAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.adminClient = adminClient
+	return adminClient, nil
 }
 
 func GetCurrentSession() *session {
@@ -89,36 +107,27 @@ func GetCurrentSession() *session {
 var currentSession *session
 
 func createDefaultSession() error {
-	file, err := os.Create(".openkommander_config")
+	file, err := os.Create(constants.OpenKommanderConfigFilename)
 	if err != nil {
 		fmt.Println("Error creating session file:", err)
 		return err
 	}
-
 	defer file.Close()
 
-	sessionData := map[string]interface{}{
-		"brokers":         []string{},
-		"isAuthenticated": false,
-	}
-
-	encoder := json.NewEncoder(file)
-	return encoder.Encode(sessionData)
+	sessionData := SessionData{Brokers: []string{}, IsAuthenticated: false}
+	return json.NewEncoder(file).Encode(sessionData)
 }
 
 func saveSession() error {
-	file, err := os.Create(".openkommander_config")
+	file, err := os.Create(constants.OpenKommanderConfigFilename)
 	if err != nil {
 		fmt.Println("Error creating session file:", err)
 		return err
 	}
 	defer file.Close()
-	sessionData := map[string]interface{}{
-		"brokers":         currentSession.brokers,
-		"isAuthenticated": currentSession.isAuthenticated,
-	}
-	encoder := json.NewEncoder(file)
-	err = encoder.Encode(sessionData)
+
+	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated}
+	err = json.NewEncoder(file).Encode(sessionData)
 	if err != nil {
 		fmt.Println("Error encoding session data:", err)
 		return err
@@ -127,7 +136,7 @@ func saveSession() error {
 }
 
 func loadSession() error {
-	file, err := os.Open(".openkommander_config")
+	file, err := os.Open(constants.OpenKommanderConfigFilename)
 	if err != nil {
 		err = createDefaultSession()
 		if err != nil {
@@ -135,7 +144,7 @@ func loadSession() error {
 			return err
 		}
 
-		file, err = os.Open(".openkommander_config")
+		file, err = os.Open(constants.OpenKommanderConfigFilename)
 		if err != nil {
 			fmt.Println("Error opening session file:", err)
 			return err
@@ -143,22 +152,16 @@ func loadSession() error {
 	}
 	defer file.Close()
 
-	sessionData := map[string]interface{}{}
+	var data SessionData
 	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&sessionData)
+	err = decoder.Decode(&data)
 	if err != nil {
 		fmt.Println("Error decoding session data:", err)
 		return err
 	}
 
-	brokersInterface := sessionData["brokers"].([]interface{})
-	brokers := make([]string, len(brokersInterface))
-	for i, v := range brokersInterface {
-		brokers[i] = v.(string)
-	}
-
-	currentSession.brokers = brokers
-	currentSession.isAuthenticated = sessionData["isAuthenticated"].(bool)
+	currentSession.brokers = data.Brokers
+	currentSession.isAuthenticated = data.IsAuthenticated
 	return nil
 }
 

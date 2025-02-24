@@ -1,9 +1,7 @@
 package commands
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/IBM/openkommander/pkg/session"
 	"github.com/IBM/sarama"
@@ -16,16 +14,10 @@ func metadataCommand() {
 		return
 	}
 
-	client := currentSession.GetClient()
-	if client == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_, err := currentSession.Connect(ctx)
-		if err != nil {
-			fmt.Printf("Error connecting to cluster: %v\n", err)
-			return
-		}
-		client = currentSession.GetClient()
+	client, err := currentSession.GetClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
+		return
 	}
 
 	brokers := client.Brokers()
