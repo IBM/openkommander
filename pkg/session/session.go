@@ -3,13 +3,14 @@ package session
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/IBM/openkommander/pkg/cluster"
-
+	"github.com/IBM/openkommander/pkg/constants"
 	"github.com/IBM/sarama"
 	"github.com/spf13/viper"
 )
@@ -18,8 +19,8 @@ type Session interface {
 	Info() string
 	Connect(ctx context.Context) (sarama.Client, error)
 	Disconnect()
-	GetClient() sarama.Client
-	GetAdminClient() sarama.ClusterAdmin
+	GetClient() (sarama.Client, error)
+	GetAdminClient() (sarama.ClusterAdmin, error)
 	IsAuthenticated() bool
 }
 
@@ -30,88 +31,155 @@ type session struct {
 	isAuthenticated bool
 }
 
-func (s session) Info() string {
+type SessionData struct {
+	Brokers         []string `json:"brokers"`
+	IsAuthenticated bool     `json:"isAuthenticated"`
+}
+
+func (s *session) Info() string {
 	return fmt.Sprintf("Brokers: %v, Authenticated: %v", s.brokers, s.isAuthenticated)
 }
 
-func (s session) Connect(ctx context.Context) (sarama.Client, error) {
+func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
-
 	client, err := cluster.NewCluster(s.brokers).Connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster: %w", err)
 	}
-
 	adminClient, err := cluster.NewCluster(s.brokers).ConnectAdmin(ctx)
-
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster as admin: %w", err)
 	}
-
 	s.client = client
 	s.adminClient = adminClient
 	s.isAuthenticated = true
-	currentSession = s
 	return client, nil
 }
 
-func (s session) Disconnect() {
+func (s *session) Disconnect() {
 	if s.client != nil {
 		s.client.Close()
 	}
 	s.client = nil
 	s.adminClient = nil
 	s.isAuthenticated = false
-	currentSession = s
 	fmt.Println("Logged out successfully!")
 }
 
-func (s session) IsAuthenticated() bool {
+func (s *session) IsAuthenticated() bool {
 	return s.isAuthenticated
 }
 
-func (s session) GetClient() sarama.Client {
-	if s.client == nil {
-		return nil
+func (s *session) GetClient() (sarama.Client, error) {
+	if s.client != nil {
+		return s.client, nil
 	}
-	return s.client
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := s.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
-func (s session) GetAdminClient() sarama.ClusterAdmin {
-	if s.adminClient == nil {
-		return nil
+func (s *session) GetAdminClient() (sarama.ClusterAdmin, error) {
+	if s.adminClient != nil {
+		return s.adminClient, nil
 	}
-
-	return s.adminClient
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	adminClient, err := cluster.NewCluster(s.brokers).ConnectAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.adminClient = adminClient
+	return adminClient, nil
 }
 
-func GetCurrentSession() Session {
+func GetCurrentSession() *session {
 	return currentSession
 }
 
-var currentSession Session
+var currentSession *session
+
+func createDefaultSession() error {
+	file, err := os.Create(constants.OpenKommanderConfigFilename)
+	if err != nil {
+		fmt.Println("Error creating session file:", err)
+		return err
+	}
+	defer file.Close()
+
+	sessionData := SessionData{Brokers: []string{}, IsAuthenticated: false}
+	return json.NewEncoder(file).Encode(sessionData)
+}
+
+func saveSession() error {
+	file, err := os.Create(constants.OpenKommanderConfigFilename)
+	if err != nil {
+		fmt.Println("Error creating session file:", err)
+		return err
+	}
+	defer file.Close()
+
+	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated}
+	err = json.NewEncoder(file).Encode(sessionData)
+	if err != nil {
+		fmt.Println("Error encoding session data:", err)
+		return err
+	}
+	return nil
+}
+
+func loadSession() error {
+	file, err := os.Open(constants.OpenKommanderConfigFilename)
+	if err != nil {
+		err = createDefaultSession()
+		if err != nil {
+			fmt.Println("Error creating session file:", err)
+			return err
+		}
+
+		file, err = os.Open(constants.OpenKommanderConfigFilename)
+		if err != nil {
+			fmt.Println("Error opening session file:", err)
+			return err
+		}
+	}
+	defer file.Close()
+
+	var data SessionData
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding session data:", err)
+		return err
+	}
+
+	currentSession.brokers = data.Brokers
+	currentSession.isAuthenticated = data.IsAuthenticated
+	return nil
+}
 
 func init() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
+	viper.ReadInConfig()
 
-	err := viper.ReadInConfig()
-	if err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	} else {
-		fmt.Println("No config file found, using defaults")
-	}
-
-	currentSession = session{
+	currentSession = &session{
 		brokers:         []string{},
 		isAuthenticated: false,
 		client:          nil,
 		adminClient:     nil,
 	}
+
+	loadSession()
 }
 
 func Login() {
@@ -135,18 +203,16 @@ func Login() {
 		broker = defaultBroker
 	}
 
-	currentSession = session{
-		brokers:         []string{broker},
-		isAuthenticated: false,
-	}
+	currentSession.brokers = []string{broker}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := currentSession.Connect(ctx)
 	if client != nil && err == nil {
 		fmt.Println("Logged in successfully!")
+		saveSession()
 	} else {
-		fmt.Println("Error connecting to cluster.")
+		fmt.Printf("Error connecting to cluster: %v\n", err)
 	}
 }
 
@@ -157,9 +223,15 @@ func Logout() {
 	}
 
 	currentSession.Disconnect()
+	saveSession()
 }
 
 func DisplaySession() {
+	if currentSession == nil {
+		fmt.Println("No active session.")
+		return
+	}
+
 	if currentSession.IsAuthenticated() {
 		fmt.Println("Current session:", currentSession.Info())
 	} else {

@@ -4,12 +4,6 @@ import (
 	"github.com/IBM/openkommander/pkg/session"
 )
 
-func init() {
-	Register("Session", "login", loginCommand)
-	Register("Session", "logout", logoutCommand)
-	Register("Session", "session", sessionInfoCommand)
-}
-
 func loginCommand() {
 	session.Login()
 }

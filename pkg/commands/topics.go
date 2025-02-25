@@ -6,15 +6,8 @@ import (
 	"strings"
 
 	"github.com/IBM/openkommander/pkg/session"
-
 	"github.com/IBM/sarama"
 )
-
-func init() {
-	Register("Topics Management", "topic-create", createTopicCommand)
-	Register("Topics Management", "topic-delete", deleteTopicCommand)
-	Register("Topics Management", "topic-list", listTopicsCommand)
-}
 
 func createTopicCommand() {
 	currentSession := session.GetCurrentSession()
@@ -23,9 +16,9 @@ func createTopicCommand() {
 		return
 	}
 
-	client := currentSession.GetAdminClient()
-	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
+	client, err := currentSession.GetAdminClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
 		return
 	}
 
@@ -63,7 +56,7 @@ func createTopicCommand() {
 		ReplicationFactor: int16(replicationFactor),
 	}
 
-	err := client.CreateTopic(topicName, topicDetail, false)
+	err = client.CreateTopic(topicName, topicDetail, false)
 	if err != nil {
 		if strings.Contains(err.Error(), "Topic with this name already exists") {
 			fmt.Printf("Topic '%s' already exists\n", topicName)
@@ -84,9 +77,9 @@ func deleteTopicCommand() {
 		return
 	}
 
-	client := currentSession.GetAdminClient()
-	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
+	client, err := currentSession.GetAdminClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
 		return
 	}
 
@@ -99,7 +92,7 @@ func deleteTopicCommand() {
 		return
 	}
 
-	err := client.DeleteTopic(topicName)
+	err = client.DeleteTopic(topicName)
 	if err != nil {
 		fmt.Printf("Error deleting topic: %v\n", err)
 		return
@@ -115,9 +108,9 @@ func listTopicsCommand() {
 		return
 	}
 
-	client := currentSession.GetAdminClient()
-	if client == nil {
-		fmt.Println("Error: not connected to a cluster.")
+	client, err := currentSession.GetAdminClient()
+	if err != nil {
+		fmt.Printf("Error connecting to cluster: %v\n", err)
 		return
 	}
 

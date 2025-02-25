@@ -24,3 +24,5 @@ go.sum
 
 bin/
 obj/
+
+.openkommander*

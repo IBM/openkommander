@@ -26,7 +26,6 @@ func (c *Cluster) Connect(ctx context.Context) (sarama.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating sarama client (brokers: %v): %w", c.Brokers, err)
 	}
-
 	return client, nil
 }
 
@@ -35,6 +34,5 @@ func (c *Cluster) ConnectAdmin(ctx context.Context) (sarama.ClusterAdmin, error)
 	if err != nil {
 		return nil, fmt.Errorf("error creating sarama cluster admin (brokers: %v): %w", c.Brokers, err)
 	}
-
 	return admin, nil
 }

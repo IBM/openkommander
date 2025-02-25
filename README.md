@@ -30,9 +30,9 @@ OpenKommander is a command line utility and admin UI for Apache Kafka compatible
 
     Note: Replace `openkommander-app-1` in case your is different
 
-5. **Run the application**
+5. **Build and install cli**
     ```bash
-    go run main.go
+    make dev-run
     ```
 
 ## Configuration
@@ -59,10 +59,10 @@ kafka:
   # broker: kafka-cluster.example.com:9093  # For remote cluster
 ```
 
-The configuration file is loaded when the application starts. If you need to connect to a different broker after starting the application, you can use the `login` command with a custom broker address:
+The configuration file is loaded when the application starts. If you need to connect to a different broker after starting the application, you can use the `ok login` command with a custom broker address:
 
 ```bash
-> login
+$ ok login
 Enter broker address [kafka:9093]: localhost:9092
 ```
 
@@ -73,46 +73,57 @@ After running the application, you can use the following commands:
 
 ### Commands
 
+All commands start with prefix `ok`
+
 | Command | Description | Arguments |
 |---------|-------------|-----------|
-| `login` | Connect to a Kafka cluster | Optional broker address (default from config.yaml) |
+| `login` | Connect to a Kafka cluster | None |
 | `logout` | End the current session | None |
 | `session` | Display current session information | None |
 | `metadata` | Display cluster information | None |
 | `help` | Display available commands | None |
-| `exit` | Exit the application | None |
 
 
 ### Example Workflow
 
-1. Start the application:
+1. Build the CLI:
    ```bash
-   go run main.go
+   make build
    ```
 
-2. Connect to the cluster:
+2. Install the CLI:
    ```bash
-   > login
+   make install
+   ```
+
+   Note: It may fail due to permission if needed add `sudo` for example
+   ```bash
+   sudo make install
+   ```
+
+3. Connect to the cluster:
+   ```bash
+   $ ok login
    Connected to Kafka cluster at kafka:9093
    ```
 
-3. View session information:
+4. View session information:
    ```bash
-   > session
+   $ ok session
    Current session: Brokers: [kafka:9093], Authenticated: true
    ```
 
-4. View cluster information:
+5. View cluster information:
    ```bash
-   > metadata
+   $ ok metadata
    Cluster Brokers:
     - kafka:9093 (ID: 1)
    ```
 
-5. End session and exit:
+6. End session and exit:
    ```bash
-   > logout
+   $ ok logout
    Logged out successfully!
-   > exit
+   $ ok exit
    Exiting application.
    ```
