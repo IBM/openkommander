@@ -32,7 +32,6 @@ jobs:
       matrix:
         modules: ${{ fromJSON(needs.detect-modules.outputs.modules) }}
     steps:
-      - run: go get github.com/IBM/openkommander/pkg/commands
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:

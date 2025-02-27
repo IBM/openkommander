@@ -11,7 +11,7 @@
 
 go.work
 
-go.sum
+# go.sum
 
 .idea/
 .vscode/
