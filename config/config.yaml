@@ -1,6 +1,5 @@
 kafka:
   broker: kafka:9093
-  # broker: localhost:9092  # For local Kafka installation
 
 openkommander:
   session_filename: .openkommander_config
