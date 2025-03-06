@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/IBM/sarama"
 )
@@ -12,6 +13,7 @@ import (
 type Server struct {
 	httpServer  *http.Server
 	kafkaClient sarama.Client
+	startTime   time.Time
 }
 
 type Response struct {
@@ -27,11 +29,10 @@ type TopicRequest struct {
 }
 
 func NewServer(port string, brokers []string) (*Server, error) {
-	// Configure Kafka client
+
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_8_0_0
 
-	// Create Kafka client
 	client, err := sarama.NewClient(brokers, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka client: %v", err)
@@ -39,13 +40,14 @@ func NewServer(port string, brokers []string) (*Server, error) {
 
 	server := &Server{
 		kafkaClient: client,
+		startTime:   time.Now(),
 	}
 
 	mux := http.NewServeMux()
-	
-	// Register routes
+
 	mux.HandleFunc("/api/v1/status", server.handleStatus)
 	mux.HandleFunc("/api/v1/topics", server.handleTopics)
+	mux.HandleFunc("/api/v1/brokers", server.handleBrokers)
 
 	server.httpServer = &http.Server{
 		Addr:    ":" + port,
@@ -67,12 +69,36 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		kafkaStatus = "connected"
 	}
 
+	clusterInfo := make(map[string]interface{})
+
+	clusterInfo["api_version"] = "1.0.0"
+	clusterInfo["kafka_version"] = s.kafkaClient.Config().Version.String()
+
+	brokerDetails := make([]map[string]interface{}, 0)
+	for _, broker := range brokers {
+
+		connected, err := broker.Connected()
+		if err != nil {
+			connected = false
+		}
+
+		brokerInfo := map[string]interface{}{
+			"id":        broker.ID(),
+			"addr":      broker.Addr(),
+			"connected": connected,
+		}
+		brokerDetails = append(brokerDetails, brokerInfo)
+	}
+	clusterInfo["broker_details"] = brokerDetails
+
 	response := Response{
 		Status:  "ok",
 		Message: "OpenKommander REST API is running",
 		Data: map[string]interface{}{
-			"kafka_status": kafkaStatus,
-			"brokers":     len(brokers),
+			"kafka_status":   kafkaStatus,
+			"brokers_count":  len(brokers),
+			"cluster_info":   clusterInfo,
+			"uptime_seconds": time.Since(s.startTime).Seconds(),
 		},
 	}
 
@@ -93,6 +119,11 @@ func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
+
+	if refreshable, ok := s.kafkaClient.(interface{ RefreshMetadata() error }); ok {
+		refreshable.RefreshMetadata()
+	}
+
 	topics, err := s.kafkaClient.Topics()
 	if err != nil {
 		sendError(w, "Failed to list topics", err)
@@ -113,7 +144,6 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert broker objects to strings
 	brokerList := make([]string, 0)
 	for _, broker := range s.kafkaClient.Brokers() {
 		brokerList = append(brokerList, broker.Addr())
@@ -149,7 +179,6 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert broker objects to strings
 	brokerList := make([]string, 0)
 	for _, broker := range s.kafkaClient.Brokers() {
 		brokerList = append(brokerList, broker.Addr())
@@ -171,6 +200,34 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 	response := Response{
 		Status:  "ok",
 		Message: fmt.Sprintf("Topic '%s' deleted successfully", topicName),
+	}
+	sendJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
+	brokers := s.kafkaClient.Brokers()
+	brokerList := make([]map[string]interface{}, 0)
+
+	for _, broker := range brokers {
+
+		connected, err := broker.Connected()
+		if err != nil {
+
+			connected = false
+		}
+
+		brokerInfo := map[string]interface{}{
+			"id":        broker.ID(),
+			"addr":      broker.Addr(),
+			"connected": connected,
+			"rack":      broker.Rack(),
+		}
+		brokerList = append(brokerList, brokerInfo)
+	}
+
+	response := Response{
+		Status: "ok",
+		Data:   brokerList,
 	}
 	sendJSON(w, http.StatusOK, response)
 }

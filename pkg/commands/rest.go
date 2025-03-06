@@ -28,19 +28,16 @@ func init() {
 func handleRestServer(cmd *cobra.Command, args []string) {
 	port, _ := cmd.Flags().GetString("port")
 	brokers, _ := cmd.Flags().GetStringSlice("brokers")
-	
-	// Create a new server instance
+
 	srv, err := rest.NewServer(port, brokers)
 	if err != nil {
 		fmt.Printf("Failed to create server: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Create a channel to listen for interrupt signals
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start the server in a goroutine
 	go func() {
 		if err := srv.Start(); err != nil {
 			fmt.Printf("Server error: %v\n", err)
@@ -56,15 +53,12 @@ func handleRestServer(cmd *cobra.Command, args []string) {
 	fmt.Println("  DELETE /api/v1/topics?name=X - Delete a topic")
 	fmt.Println("\nPress Ctrl+C to stop the server")
 
-	// Wait for interrupt signal
 	<-done
 	fmt.Println("\nShutting down server...")
 
-	// Create a deadline for server shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Attempt graceful shutdown
 	if err := srv.Stop(ctx); err != nil {
 		fmt.Printf("Server forced to shutdown: %v\n", err)
 		os.Exit(1)

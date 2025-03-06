@@ -1,4 +1,4 @@
-CONTAINER_CMD ?= podman-compose
+CONTAINER_CMD ?= podman compose
 BINARY_NAME=ok
 
 dev:
