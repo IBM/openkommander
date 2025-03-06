@@ -77,12 +77,13 @@ All commands start with prefix `ok`
 
 | Command | Description | Arguments |
 |---------|-------------|-----------|
-| `login` | Connect to a Kafka cluster | None |
-| `logout` | End the current session | None |
-| `session` | Display current session information | None |
-| `metadata` | Display cluster information | None |
-| `help` | Display available commands | None |
-
+| `login` | Connect to a Kafka cluster | None | ok login |
+| `logout` | End the current session | None | ok logout |
+| `session` | Display current session information | None | ok session |
+| `metadata` | Display cluster information | None | ok metadata |
+| `rest` | Display rest server information | brokers | ok rest --brokers kafka:9093 |
+| `help` | Display available commands | None | 
+ßßß
 
 ### Example Workflow
 
@@ -120,10 +121,34 @@ All commands start with prefix `ok`
     - kafka:9093 (ID: 1)
    ```
 
-6. End session and exit:
+6. Start REST server:
+   ```bash
+   $ ok rest --brokers kafka:9093
+   ```
+
+7. End session and exit:
    ```bash
    $ ok logout
    Logged out successfully!
    $ ok exit
    Exiting application.
    ```
+
+### Rest Endpoints
+
+# List topics
+curl -X GET http://localhost:8080/topics
+
+# Create a topic
+curl -X POST http://localhost:8080/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-topic","partitions":2,"replication_factor":1}'
+
+# Delete a topic
+curl -X DELETE http://localhost:8080/topics/my-topic
+
+# Broker status
+curl -X GET http://localhost:8080/api/v1/status
+
+# Broker management
+curl -X GET http://localhost:8080/api/v1/brokers
