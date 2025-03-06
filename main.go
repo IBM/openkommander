@@ -23,12 +23,24 @@ Complete documentation is available at https://github.com/IBM/openkommander`,
 		Aliases: []string{"openkommander", "kommander", "okm"},
 	}
 
+	serverCmd := &cobra.Command{
+		Use:   "server",
+		Short: "Start the OpenKommander REST API server",
+		Run: func(cmd *cobra.Command, args []string) {
+			startRESTServer()
+		},
+	}
+
+	rootCmd.AddCommand(serverCmd)
 	commands.RegisterCommands(rootCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func startRESTServer() {
 	router := api.NewRouter()
 	server := &http.Server{
 		Addr:    ":8080",
