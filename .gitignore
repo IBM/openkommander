@@ -26,3 +26,5 @@ bin/
 obj/
 
 .openkommander*
+
+.DS_Store
