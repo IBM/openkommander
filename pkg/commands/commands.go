@@ -39,6 +39,23 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		},
 	}
 
+	brokersCmd := &cobra.Command{
+		Use:   "brokers",
+		Short: "Broker management commands",
+	}
+
+	listBrokersCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List all brokers",
+		Run: func(cmd *cobra.Command, args []string) {
+			brokersListCommand()
+		},
+	}
+
+	brokersCmd.AddCommand(listBrokersCmd)
+
+	rootCmd.AddCommand(brokersCmd)
+
 	serverCmd := restServerCommands()
 
 	topicsCmd := topicsCommands()
@@ -50,6 +67,7 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		metadataCmd,
 		topicsCmd,
 		serverCmd,
+		restCmd,
 	)
 }
 
