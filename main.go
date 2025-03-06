@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/IBM/openkommander/pkg/api"
-	"github.com/IBM/openkommander/pkg/commands"
-	"github.com/spf13/cobra"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/IBM/openkommander/pkg/api"
+	"github.com/IBM/openkommander/pkg/commands"
+	"github.com/spf13/cobra"
 )
 
 func main() {
@@ -23,15 +24,6 @@ Complete documentation is available at https://github.com/IBM/openkommander`,
 		Aliases: []string{"openkommander", "kommander", "okm"},
 	}
 
-	serverCmd := &cobra.Command{
-		Use:   "server",
-		Short: "Start the OpenKommander REST API server",
-		Run: func(cmd *cobra.Command, args []string) {
-			startRESTServer()
-		},
-	}
-
-	rootCmd.AddCommand(serverCmd)
 	commands.RegisterCommands(rootCmd)
 
 	if err := rootCmd.Execute(); err != nil {

@@ -39,9 +39,17 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		},
 	}
 
-	serverCmd := restServerCommands()
+	serverCmd := &cobra.Command{
+		Use:   "server",
+		Short: "Start the OpenKommander REST API server",
+		Run: func(cmd *cobra.Command, args []string) {
+			startRESTServer()
+		},
+	}
 
 	topicsCmd := topicsCommands()
+
+	rootCmd.AddCommand(serverCmd)
 
 	rootCmd.AddCommand(
 		loginCmd,
