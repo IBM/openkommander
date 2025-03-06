@@ -167,6 +167,4 @@ OpenKommander provides a set of commands to manage Kafka topics:
    ```bash
    $ ok logout
    Logged out successfully!
-   $ ok exit
-   Exiting application.
    ```
