@@ -1,4 +1,4 @@
-package commands
+package functions
 
 import (
 	"fmt"
@@ -7,7 +7,19 @@ import (
 	"github.com/IBM/sarama"
 )
 
-func metadataCommand() {
+func Login() {
+	session.Login()
+}
+
+func Logout() {
+	session.Logout()
+}
+
+func GetSessionInfo() {
+	session.DisplaySession()
+}
+
+func GetClusterMetadata() {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
 		fmt.Println("Error: no session found.")

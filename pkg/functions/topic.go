@@ -1,15 +1,14 @@
-package commands
+package functions
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/IBM/openkommander/pkg/session"
 	"github.com/IBM/sarama"
 )
 
-func createTopicCommand() {
+func CreateTopic(topicName string, numPartitions, replicationFactor int) {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
 		fmt.Println("Error: no session found.")
@@ -22,37 +21,8 @@ func createTopicCommand() {
 		return
 	}
 
-	fmt.Print("Enter topic name: ")
-	var topicName string
-	fmt.Scanln(&topicName)
-
-	if topicName == "" {
-		fmt.Println("Topic name cannot be empty")
-		return
-	}
-
-	fmt.Print("Enter number of partitions (default 1): ")
-	var partitionsStr string
-	fmt.Scanln(&partitionsStr)
-	partitions := 1
-	if partitionsStr != "" {
-		if p, err := strconv.Atoi(partitionsStr); err == nil && p > 0 {
-			partitions = p
-		}
-	}
-
-	fmt.Print("Enter replication factor (default 1): ")
-	var replicationStr string
-	fmt.Scanln(&replicationStr)
-	replicationFactor := 1
-	if replicationStr != "" {
-		if rf, err := strconv.Atoi(replicationStr); err == nil && rf > 0 {
-			replicationFactor = rf
-		}
-	}
-
 	topicDetail := &sarama.TopicDetail{
-		NumPartitions:     int32(partitions),
+		NumPartitions:     int32(numPartitions),
 		ReplicationFactor: int16(replicationFactor),
 	}
 
@@ -67,10 +37,10 @@ func createTopicCommand() {
 	}
 
 	fmt.Printf("Successfully created topic '%s' with %d partitions and replication factor %d\n",
-		topicName, partitions, replicationFactor)
+		topicName, numPartitions, replicationFactor)
 }
 
-func deleteTopicCommand() {
+func DeleteTopic(topicName string) {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
 		fmt.Println("Error: no session found.")
@@ -82,10 +52,6 @@ func deleteTopicCommand() {
 		fmt.Printf("Error connecting to cluster: %v\n", err)
 		return
 	}
-
-	fmt.Print("Enter topic name to delete: ")
-	var topicName string
-	fmt.Scanln(&topicName)
 
 	if topicName == "" {
 		fmt.Println("Topic name cannot be empty")
@@ -101,7 +67,7 @@ func deleteTopicCommand() {
 	fmt.Printf("Successfully deleted topic '%s'\n", topicName)
 }
 
-func listTopicsCommand() {
+func ListTopics() {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
 		fmt.Println("Error: no session found.")
