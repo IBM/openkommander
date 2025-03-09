@@ -21,7 +21,7 @@ type CreateTopicFlags struct {
 func GetTopicCommands() *TopicCommands {
 	topicCommands := &TopicCommands{
 		Topic: &OkParentCmd{
-			Use:   "topic",
+			Use:   "topics",
 			Short: "Topic management commands",
 		},
 		Create: &OkCmd{
