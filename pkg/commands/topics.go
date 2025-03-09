@@ -94,7 +94,10 @@ func deleteTopicCommand() {
 
 	fmt.Print("Enter topic name to delete: ")
 	var topicName string
-	fmt.Scanln(&topicName)
+	_, err = fmt.Scanln(&topicName)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+	}
 
 	if topicName == "" {
 		fmt.Println("Topic name cannot be empty")
