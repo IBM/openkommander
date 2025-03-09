@@ -39,6 +39,11 @@ jobs:
       - name: Install dependencies
         run: go mod download
         working-directory: ${{ matrix.modules }}
+      - name: Prepare build cache
+        run: |
+          go mod tidy
+          go build ./...
+        working-directory: ${{ matrix.modules }}
       - name: golangci-lint ${{ matrix.modules }}
         uses: golangci/golangci-lint-action@v6
         with:
