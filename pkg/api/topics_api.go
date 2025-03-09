@@ -52,7 +52,10 @@ func CreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Topic created successfully"})
+	err = json.NewEncoder(w).Encode(map[string]string{"message": "Topic created successfully"})
+	if err != nil {
+		fmt.Println("Error encoding response:", err)
+	}
 }
 
 func ListTopicsHandler(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +77,10 @@ func ListTopicsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(topics)
+	err = json.NewEncoder(w).Encode(topics)
+	if err != nil {
+		fmt.Println("Error encoding response:", err)
+	}
 }
 
 func DeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
@@ -105,5 +111,8 @@ func DeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Topic deleted successfully"})
+	err = json.NewEncoder(w).Encode(map[string]string{"message": "Topic deleted successfully"})
+	if err != nil {
+		fmt.Println("Error encoding response:", err)
+	}
 }

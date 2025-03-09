@@ -24,7 +24,10 @@ func createTopicCommand() {
 
 	fmt.Print("Enter topic name: ")
 	var topicName string
-	fmt.Scanln(&topicName)
+	_, err = fmt.Scanln(&topicName)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+	}
 
 	if topicName == "" {
 		fmt.Println("Topic name cannot be empty")
@@ -33,7 +36,10 @@ func createTopicCommand() {
 
 	fmt.Print("Enter number of partitions (default 1): ")
 	var partitionsStr string
-	fmt.Scanln(&partitionsStr)
+	_, err = fmt.Scanln(&partitionsStr)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+	}
 	partitions := 1
 	if partitionsStr != "" {
 		if p, err := strconv.Atoi(partitionsStr); err == nil && p > 0 {
@@ -43,7 +49,10 @@ func createTopicCommand() {
 
 	fmt.Print("Enter replication factor (default 1): ")
 	var replicationStr string
-	fmt.Scanln(&replicationStr)
+	_, err = fmt.Scanln(&replicationStr)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+	}
 	replicationFactor := 1
 	if replicationStr != "" {
 		if rf, err := strconv.Atoi(replicationStr); err == nil && rf > 0 {
