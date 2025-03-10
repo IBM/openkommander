@@ -90,7 +90,15 @@ func topicsCommands() *cobra.Command {
 		},
 	}
 
-	topicsCmd.AddCommand(createTopicCmd, deleteTopicCmd, listTopicsCmd)
+	describeTopicCmd := &cobra.Command{
+		Use:   "describe",
+		Short: "Describe a Kafka topic",
+		Run: func(cmd *cobra.Command, args []string) {
+			describeTopicCommand()
+		},
+	}
+
+	topicsCmd.AddCommand(createTopicCmd, deleteTopicCmd, listTopicsCmd, describeTopicCmd)
 
 	return topicsCmd
 }
