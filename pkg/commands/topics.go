@@ -8,7 +8,7 @@ import (
 
 	"github.com/IBM/openkommander/pkg/session"
 	"github.com/IBM/sarama"
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 func createTopicCommand() {
@@ -192,20 +192,23 @@ func describeTopicCommand() {
 	fmt.Printf("  Is Internal: %t\n", topic.IsInternal)
 	fmt.Printf("  Authorized Operations: %d\n", topic.TopicAuthorizedOperations)
 
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Partition ID", "Leader", "Replicas", "In-Sync Replicas (ISR)"})
-	table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
-
+	// Table for partition details
 	fmt.Println("\nTopic Partitions:")
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"Partition ID", "Leader", "Replicas", "In-Sync Replicas (ISR)"})
+
 	for _, partition := range topic.Partitions {
-		table.Append([]string{
-			fmt.Sprintf("%d", partition.ID),
-			fmt.Sprintf("%d", partition.Leader),
+		t.AppendRow(table.Row{
+			partition.ID,
+			partition.Leader,
 			fmt.Sprintf("%v", partition.Replicas),
 			fmt.Sprintf("%v", partition.Isr),
 		})
 	}
-	table.Render()
+
+	t.SetStyle(table.StyleLight)
+	t.Render()
 
 	// Fetch and display topic configurations
 	configs, err := client.DescribeConfig(sarama.ConfigResource{Type: sarama.TopicResource, Name: topicName})
@@ -215,8 +218,15 @@ func describeTopicCommand() {
 	}
 
 	fmt.Println("\nTopic Configurations:")
+	configTable := table.NewWriter()
+	configTable.SetOutputMirror(os.Stdout)
+	configTable.AppendHeader(table.Row{"Config Name", "Value"})
+
 	for _, config := range configs {
-		fmt.Printf("  %s: %s\n", config.Name, config.Value)
+		configTable.AppendRow(table.Row{config.Name, config.Value})
 	}
+
+	configTable.SetStyle(table.StyleLight)
+	configTable.Render()
 
 }

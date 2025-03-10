@@ -177,17 +177,23 @@ OpenKommander provides a set of commands to manage Kafka topics:
    | 1            | 2      | [2 3]    | [2]                    |
    | 2            | 3      | [3 1]    | [3 1]                  |
 
-
    Topic Configurations:
-      compression.type: producer
-      remote.log.delete.on.disable: false
-      leader.replication.throttled.replicas: 
-      remote.storage.enable: false
-      message.downconversion.enable: true
-      min.insync.replicas: 1
-      segment.jitter.ms: 0
-      remote.log.copy.disable: false
-      ....
+
+   | CONFIG NAME                             | VALUE               |
+   |-----------------------------------------|---------------------|
+   | compression.type                        | producer            |
+   | remote.log.delete.on.disable            | false               |
+   | leader.replication.throttled.replicas   |                     |
+   | remote.storage.enable                   | false               |
+   | message.downconversion.enable           | true                |
+   | min.insync.replicas                     | 1                   |
+   | segment.jitter.ms                       | 0                   |
+   | remote.log.copy.disable                 | false               |
+   | local.retention.ms                      | -2                  |
+   | cleanup.policy                          | delete              |
+   |  flush.ms                               | 9223372036854775807 |
+   ......
+
    ```
 
 9. Delete a topic:
