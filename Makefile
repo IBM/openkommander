@@ -13,6 +13,7 @@ clean:
 setup:
 	@echo "Downloading dependencies..."
 	go mod download
+	go mod tidy
 
 build:
 	@echo "Building..."
