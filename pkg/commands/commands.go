@@ -48,6 +48,8 @@ func RegisterCommands(rootCmd *cobra.Command) {
 
 	topicsCmd := topicsCommands()
 
+	brokerCmd := brokerCommands()
+
 	rootCmd.AddCommand(serverCmd)
 
 	rootCmd.AddCommand(
@@ -57,6 +59,7 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		metadataCmd,
 		topicsCmd,
 		serverCmd,
+		brokerCmd,
 	)
 }
 
@@ -93,4 +96,23 @@ func topicsCommands() *cobra.Command {
 	topicsCmd.AddCommand(createTopicCmd, deleteTopicCmd, listTopicsCmd)
 
 	return topicsCmd
+}
+
+func brokerCommands() *cobra.Command {
+	brokerCmd := &cobra.Command{
+		Use:   "broker",
+		Short: "broker management commands",
+	}
+
+	brokerInfoCmd := &cobra.Command{
+		Use:   "info",
+		Short: "Get broker information",
+		Run: func(cmd *cobra.Command, args []string) {
+			brokerInfoCommand()
+		},
+	}
+
+	brokerCmd.AddCommand(brokerInfoCmd)
+
+	return brokerCmd
 }
