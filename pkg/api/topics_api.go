@@ -37,12 +37,6 @@ func CreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 func ListTopicsHandler(w http.ResponseWriter, r *http.Request) {
 	topics, failure := commands.ListTopics()
 	if failure != nil {
-		http.Error(w, failure.Err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	topics, failure = commands.ListTopics()
-	if failure != nil {
 		http.Error(w, failure.Err.Error(), failure.HttpCode)
 		return
 	}

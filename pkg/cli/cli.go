@@ -102,7 +102,10 @@ func cobraCmdFromOkCmd(command *OkCmd) cobraCmd {
 	if len(command.RequiredFlags) > 0 {
 		cmd.MarkFlagsRequiredTogether(command.RequiredFlags...)
 		for _, f := range command.RequiredFlags {
-			cmd.MarkFlagRequired(f)
+			err := cmd.MarkFlagRequired(f)
+			if err != nil {
+				panic(err.Error())
+			}
 		}
 	}
 
