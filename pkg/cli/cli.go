@@ -7,13 +7,32 @@ import (
 type cobraCmd = *cobra.Command
 type cobraArgs = []string
 
-// Used for command flags
+// OkFlag
+
 type OkFlag struct {
 	Name      string
 	ShortName string // Optional
-	ValueType string
+	ValueType OkFlagType
 	Usage     string
 }
+
+type OkFlagType string
+
+const (
+	OkFlagString OkFlagType = "string"
+	OkFlagInt    OkFlagType = "int"
+)
+
+func NewOkFlag(flagType OkFlagType, name, shortName, usage string) OkFlag {
+	return OkFlag{
+		Name:      name,
+		ShortName: shortName,
+		ValueType: flagType,
+		Usage:     usage,
+	}
+}
+
+// OkCmd
 
 type OkCmd struct {
 	Use           string
@@ -27,6 +46,8 @@ type OkCmd struct {
 }
 
 type OkParentCmd = OkCmd
+
+// CLI
 
 func Init() cobraCmd {
 	return RegisterCommands(RootCommandList{})

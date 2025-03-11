@@ -19,11 +19,15 @@ func (TopicCommandList) GetParentCommand() *OkParentCmd {
 func (m TopicCommandList) GetCommands() []*OkCmd {
 	return []*OkCmd{
 		{ // Create topic
-			Use:           "create",
-			Short:         "Create a new topic",
-			Run:           createTopic,
-			Flags:         m.getCreateFlags(),
-			RequiredFlags: m.getCreateRequiredFlags(),
+			Use:   "create",
+			Short: "Create a new topic",
+			Run:   createTopic,
+			Flags: []OkFlag{
+				NewOkFlag(OkFlagString, "name", "n", "Specify the name of the new topic"),
+				NewOkFlag(OkFlagInt, "partitions", "p", "Specify the number of partitions of the new topic"),
+				NewOkFlag(OkFlagInt, "replication-factor", "r", "Specify the replication factor of the new topic"),
+			},
+			RequiredFlags: []string{"name", "partitions", "replication-factor"},
 		},
 		{ // Delete topic
 			Use:   "delete [NAME]",
@@ -45,45 +49,18 @@ func (TopicCommandList) GetSubcommands() []CommandList {
 
 // Create topic
 
-func (TopicCommandList) getCreateRequiredFlags() []string {
-	return []string{"name", "partitions", "replication-factor"}
-}
-
-func (TopicCommandList) getCreateFlags() []OkFlag {
-	return []OkFlag{
-		{
-			Name:      "name",
-			ShortName: "n",
-			ValueType: "string",
-			Usage:     "Specify the name of the new topic",
-		},
-		{
-			Name:      "partitions",
-			ShortName: "p",
-			ValueType: "int",
-			Usage:     "Specify the number of partitions of the new topic",
-		},
-		{
-			Name:      "replication-factor",
-			ShortName: "r",
-			ValueType: "int",
-			Usage:     "Specify the replication factor of the new topic",
-		},
-	}
-}
-
 func createTopic(cmd cobraCmd, args cobraArgs) {
 	name, _ := cmd.Flags().GetString("name")
 	numPartitions, _ := cmd.Flags().GetInt("partitions")
 	replicationFactor, _ := cmd.Flags().GetInt("replication-factor")
 
-	success, failure := commands.CreateTopic(name, numPartitions, replicationFactor)
+	successMessage, failure := commands.CreateTopic(name, numPartitions, replicationFactor)
 	if failure != nil {
 		fmt.Println(failure.Err)
 		return
 	}
 
-	fmt.Println(success.Body)
+	fmt.Println(successMessage)
 }
 
 // Delete topic
@@ -91,25 +68,23 @@ func createTopic(cmd cobraCmd, args cobraArgs) {
 func deleteTopic(cmd cobraCmd, args cobraArgs) {
 	name := cmd.Flags().Arg(0)
 
-	success, failure := commands.DeleteTopic(name)
+	successMessage, failure := commands.DeleteTopic(name)
 	if failure != nil {
 		fmt.Println(failure.Err)
 		return
 	}
 
-	fmt.Println(success.Body)
+	fmt.Println(successMessage)
 }
 
 // List topics
 
 func listTopics(cmd cobraCmd, args cobraArgs) {
-	success, failure := commands.ListTopics()
+	topics, failure := commands.ListTopics()
 	if failure != nil {
 		fmt.Println(failure.Err)
 		return
 	}
-
-	topics := success.Body
 
 	fmt.Println("\nTopics:")
 	fmt.Println("--------")

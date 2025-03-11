@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -8,32 +9,14 @@ import (
 	"github.com/IBM/sarama"
 )
 
-type Success[T any] struct {
-	Body T
-}
-
-func (Success[T]) IsSuccess() bool {
-	return true
-}
-
 type Failure struct {
 	Err      error
 	HttpCode int
 }
 
-func (Failure) IsSuccess() bool {
-	return false
-}
-
-func NewSuccess[T any](body T) *Success[T] {
-	return &Success[T]{
-		Body: body,
-	}
-}
-
 func NewFailure(err string, httpCode int) *Failure {
 	return &Failure{
-		Err:      fmt.Errorf(err),
+		Err:      errors.New(err),
 		HttpCode: httpCode,
 	}
 }

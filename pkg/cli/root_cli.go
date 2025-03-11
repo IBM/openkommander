@@ -26,18 +26,8 @@ func (RootCommandList) GetCommands() []*OkCmd {
 			Short: "Connect to a Kafka cluster",
 			Run:   login,
 			Flags: []OkFlag{
-				{
-					Name:      "username",
-					ShortName: "u",
-					ValueType: "string",
-					Usage:     "Username for cluster",
-				},
-				{
-					Name:      "password",
-					ShortName: "p",
-					ValueType: "string",
-					Usage:     "Password for cluster",
-				},
+				NewOkFlag(OkFlagString, "username", "u", "username for cluster"),
+				NewOkFlag(OkFlagString, "password", "p", "password for cluster"),
 			},
 		},
 		{ // Logout
