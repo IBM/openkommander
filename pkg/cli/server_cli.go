@@ -1,13 +1,13 @@
 package cli
 
-import "github.com/IBM/openkommander/pkg/functions"
+import "github.com/IBM/openkommander/pkg/rest"
 
 type ServerCommandList struct{}
 
 func (ServerCommandList) GetParentCommand() *OkParentCmd {
 	return &OkParentCmd{
-		Use:   "topics",
-		Short: "Topic management commands",
+		Use:   "server",
+		Short: "REST server commands",
 	}
 }
 
@@ -26,5 +26,5 @@ func (ServerCommandList) GetSubcommands() []CommandList {
 }
 
 func startRESTServer(cmd cobraCmd, args cobraArgs) {
-	functions.StartRESTServer()
+	rest.StartRESTServer()
 }

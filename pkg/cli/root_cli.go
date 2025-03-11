@@ -1,7 +1,11 @@
 package cli
 
 import (
-	"github.com/IBM/openkommander/pkg/functions"
+	"fmt"
+
+	"github.com/IBM/openkommander/internal/core/commands"
+	"github.com/IBM/openkommander/pkg/session"
+	"github.com/IBM/sarama"
 )
 
 type RootCommandList struct{}
@@ -17,8 +21,8 @@ func (RootCommandList) GetParentCommand() *OkParentCmd {
 
 func (RootCommandList) GetCommands() []*OkCmd {
 	return []*OkCmd{
-		{
-			Use:   "login [URL] [flags]",
+		{ // Login
+			Use:   "login",
 			Short: "Connect to a Kafka cluster",
 			Run:   login,
 			Flags: []OkFlag{
@@ -36,17 +40,17 @@ func (RootCommandList) GetCommands() []*OkCmd {
 				},
 			},
 		},
-		{
+		{ // Logout
 			Use:   "logout",
 			Short: "End the current session",
 			Run:   logout,
 		},
-		{
+		{ // Session info
 			Use:   "session",
 			Short: "Display current session information",
 			Run:   getSessionInfo,
 		},
-		{
+		{ // Cluster metadata
 			Use:   "metadata",
 			Short: "Display cluster information",
 			Run:   getClusterMetadata,
@@ -62,18 +66,31 @@ func (RootCommandList) GetSubcommands() []CommandList {
 }
 
 func login(cmd cobraCmd, args cobraArgs) {
-	url := cmd.Flags().Arg(0)
-	functions.Login(url)
+	session.Login()
 }
 
 func logout(cmd cobraCmd, args cobraArgs) {
-	functions.Logout()
+	session.Logout()
 }
 
 func getSessionInfo(cmd cobraCmd, args cobraArgs) {
-	functions.GetSessionInfo()
+	session.DisplaySession()
 }
 
 func getClusterMetadata(cmd cobraCmd, args cobraArgs) {
-	functions.GetClusterMetadata()
+	client, validateFailure := commands.GetClient()
+	if validateFailure != nil {
+		fmt.Print(validateFailure.Err)
+		return
+	}
+
+	brokers := client.Brokers()
+	fmt.Println("Cluster Brokers:")
+	for _, b := range brokers {
+		if err := b.Open(client.Config()); err == nil || err == sarama.ErrAlreadyConnected {
+			fmt.Printf(" - %s (ID: %d)\n", b.Addr(), b.ID())
+		} else {
+			fmt.Printf(" - %s (ID: %d) - error connecting: %v\n", b.Addr(), b.ID(), err)
+		}
+	}
 }

@@ -16,15 +16,14 @@ type OkFlag struct {
 }
 
 type OkCmd struct {
-	Use                    string
-	Short                  string
-	Long                   string
-	Run                    func(cmd cobraCmd, args cobraArgs)
-	Flags                  []OkFlag
-	Aliases                []string
-	EnforceFlagConstraints func(cmd cobraCmd)
-	RequiredFlags          []string
-	Args                   []string
+	Use           string
+	Short         string
+	Long          string
+	Run           func(cmd cobraCmd, args cobraArgs)
+	Flags         []OkFlag
+	Aliases       []string
+	RequiredFlags []string
+	Args          cobra.PositionalArgs
 }
 
 type OkParentCmd = OkCmd
@@ -52,7 +51,7 @@ func RegisterCommands(commandList CommandList) cobraCmd {
 	}
 
 	for _, subcommand := range commandList.GetSubcommands() {
-		parentCommand.AddCommand(RegisterCommands(*subcommand))
+		parentCommand.AddCommand(RegisterCommands(subcommand))
 	}
 
 	return parentCommand
@@ -65,6 +64,7 @@ func cobraCmdFromOkCmd(command *OkCmd) cobraCmd {
 		Long:    command.Long,
 		Run:     command.Run,
 		Aliases: command.Aliases,
+		Args:    command.Args,
 	}
 
 	if command.Flags != nil {
@@ -80,7 +80,9 @@ func cobraCmdFromOkCmd(command *OkCmd) cobraCmd {
 
 	if len(command.RequiredFlags) > 0 {
 		cmd.MarkFlagsRequiredTogether(command.RequiredFlags...)
-		cmd.Flags().
+		for _, f := range command.RequiredFlags {
+			cmd.MarkFlagRequired(f)
+		}
 	}
 
 	return cmd
