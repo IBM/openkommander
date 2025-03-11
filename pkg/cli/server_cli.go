@@ -2,38 +2,29 @@ package cli
 
 import "github.com/IBM/openkommander/pkg/functions"
 
-type ServerCommands struct {
-	Server *OkParentCmd
+type ServerCommandList struct{}
 
-	Start *OkCmd
-	Stop  *OkCmd
+func (ServerCommandList) GetParentCommand() *OkParentCmd {
+	return &OkParentCmd{
+		Use:   "topics",
+		Short: "Topic management commands",
+	}
 }
 
-func GetServerCommands() *ServerCommands {
-	serverCommands := &ServerCommands{
-		Server: &OkParentCmd{
-			Use:   "server",
-			Short: "REST server commands",
-		},
-		Start: &OkCmd{
+func (ServerCommandList) GetCommands() []*OkCmd {
+	return []*OkCmd{
+		{
 			Use:   "start",
 			Short: "Start the REST server",
 			Run:   startRESTServer,
 		},
-		Stop: &OkCmd{
-			Use:   "stop",
-			Short: "Stop the REST server",
-			Run:   stopRESTServer,
-		},
 	}
+}
 
-	return serverCommands
+func (ServerCommandList) GetSubcommands() []CommandList {
+	return nil
 }
 
 func startRESTServer(cmd cobraCmd, args cobraArgs) {
 	functions.StartRESTServer()
-}
-
-func stopRESTServer(cmd cobraCmd, args cobraArgs) {
-	functions.StopRESTServer()
 }

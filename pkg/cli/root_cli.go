@@ -4,62 +4,66 @@ import (
 	"github.com/IBM/openkommander/pkg/functions"
 )
 
-type RootCommands struct {
-	Root *OkParentCmd
+type RootCommandList struct{}
 
-	Login    *OkCmd
-	Logout   *OkCmd
-	Session  *OkCmd
-	Metadata *OkCmd
-
-	Children *RootChildren
+func (RootCommandList) GetParentCommand() *OkParentCmd {
+	return &OkParentCmd{
+		Use:   "ok",
+		Short: "OpenKommander - A CLI tool for Apache Kafka management",
+		Long: `OpenKommander is a command line utility for Apache Kafka compatible brokers.
+				Complete documentation is available at https://github.com/IBM/openkommander`,
+	}
 }
 
-type RootChildren struct {
-	Server *ServerCommands
-	Topic  *TopicCommands
-}
-
-func GetRootCommands() *RootCommands {
-	rootCommands := &RootCommands{
-		Root: &OkParentCmd{
-			Use:   "ok",
-			Short: "OpenKommander - A CLI tool for Apache Kafka management",
-			Long: `OpenKommander is a command line utility for Apache Kafka compatible brokers.
-					Complete documentation is available at https://github.com/IBM/openkommander`,
-			Aliases: []string{"openkommander", "kommander", "okm"},
-		},
-		Login: &OkCmd{
-			Use:   "login",
+func (RootCommandList) GetCommands() []*OkCmd {
+	return []*OkCmd{
+		{
+			Use:   "login [URL] [flags]",
 			Short: "Connect to a Kafka cluster",
 			Run:   login,
+			Flags: []OkFlag{
+				{
+					Name:      "username",
+					ShortName: "u",
+					ValueType: "string",
+					Usage:     "Username for cluster",
+				},
+				{
+					Name:      "password",
+					ShortName: "p",
+					ValueType: "string",
+					Usage:     "Password for cluster",
+				},
+			},
 		},
-		Logout: &OkCmd{
+		{
 			Use:   "logout",
 			Short: "End the current session",
 			Run:   logout,
 		},
-		Session: &OkCmd{
+		{
 			Use:   "session",
 			Short: "Display current session information",
 			Run:   getSessionInfo,
 		},
-		Metadata: &OkCmd{
+		{
 			Use:   "metadata",
 			Short: "Display cluster information",
 			Run:   getClusterMetadata,
 		},
-		Children: &RootChildren{
-			Server: GetServerCommands(),
-			Topic:  GetTopicCommands(),
-		},
 	}
+}
 
-	return rootCommands
+func (RootCommandList) GetSubcommands() []CommandList {
+	return []CommandList{
+		&TopicCommandList{},
+		&ServerCommandList{},
+	}
 }
 
 func login(cmd cobraCmd, args cobraArgs) {
-	functions.Login()
+	url := cmd.Flags().Arg(0)
+	functions.Login(url)
 }
 
 func logout(cmd cobraCmd, args cobraArgs) {

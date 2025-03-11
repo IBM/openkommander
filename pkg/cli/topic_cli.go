@@ -1,58 +1,30 @@
 package cli
 
-import "github.com/IBM/openkommander/pkg/functions"
+import (
+	"fmt"
 
-type TopicCommands struct {
-	Topic *OkParentCmd
+	"github.com/IBM/openkommander/internal/core"
+)
 
-	Create *OkCmd
-	Delete *OkCmd
-	List   *OkCmd
+type TopicCommandList struct{}
+
+func (TopicCommandList) GetParentCommand() *OkParentCmd {
+	return &OkParentCmd{
+		Use:   "topics",
+		Short: "Topic management commands",
+	}
 }
 
-type OkFlagList interface {
-	GetFlags() []OkFlag
-}
-
-type CreateTopicFlags struct {
-	GetFlags func() []OkFlag
-}
-
-func GetTopicCommands() *TopicCommands {
-	topicCommands := &TopicCommands{
-		Topic: &OkParentCmd{
-			Use:   "topics",
-			Short: "Topic management commands",
+func (m TopicCommandList) GetCommands() []*OkCmd {
+	return []*OkCmd{
+		{ // Create
+			Use:           "create",
+			Short:         "Create a new topic",
+			Run:           createTopic,
+			Flags:         m.getCreateFlags(),
+			RequiredFlags: []string{"name", "partitions", "replication-factor"},
 		},
-		Create: &OkCmd{
-			Use:   "create",
-			Short: "Create a new topic",
-			Run:   createTopic,
-			Flags: []OkFlag{
-				{
-					Name:      "name",
-					ShortName: "n",
-					ValueType: "string",
-					Usage:     "Specify the name of the new topic",
-				},
-				{
-					Name:      "partitions",
-					ValueType: "int",
-					Usage:     "Specify the number of partitions of the new topic",
-				},
-				{
-					Name:      "replication-factor",
-					ValueType: "int",
-					Usage:     "Specify the replication factor of the new topic",
-				},
-			},
-			EnforceFlagConstraints: func(cmd cobraCmd) {
-				cmd.MarkFlagRequired("name")
-				cmd.MarkFlagRequired("partitions")
-				cmd.MarkFlagRequired("replication-factor")
-			},
-		},
-		Delete: &OkCmd{
+		{ // Delete
 			Use:   "delete",
 			Short: "Delete a topic",
 			Run:   deleteTopic,
@@ -64,18 +36,45 @@ func GetTopicCommands() *TopicCommands {
 					Usage:     "Specify the name of the topic to delete",
 				},
 			},
-			EnforceFlagConstraints: func(cmd cobraCmd) {
-				cmd.MarkFlagRequired("name")
-			},
+			RequiredFlags: []string{"name"},
 		},
-		List: &OkCmd{
+		{ // List
 			Use:   "list",
 			Short: "List all topics",
 			Run:   listTopics,
 		},
 	}
+}
 
-	return topicCommands
+func (TopicCommandList) GetSubcommands() []CommandList {
+	return nil
+}
+
+func (TopicCommandList) getCreateRequiredFlags() []string {
+	return []string{"name", "partitions", "replication-factor"}
+}
+
+func (TopicCommandList) getCreateFlags() []OkFlag {
+	return []OkFlag{
+		{
+			Name:      "name",
+			ShortName: "n",
+			ValueType: "string",
+			Usage:     "Specify the name of the new topic",
+		},
+		{
+			Name:      "partitions",
+			ShortName: "p",
+			ValueType: "int",
+			Usage:     "Specify the number of partitions of the new topic",
+		},
+		{
+			Name:      "replication-factor",
+			ShortName: "rf",
+			ValueType: "int",
+			Usage:     "Specify the replication factor of the new topic",
+		},
+	}
 }
 
 func createTopic(cmd cobraCmd, args cobraArgs) {
@@ -83,15 +82,15 @@ func createTopic(cmd cobraCmd, args cobraArgs) {
 	numPartitions, _ := cmd.Flags().GetInt("partitions")
 	replicationFactor, _ := cmd.Flags().GetInt("replication-factor")
 
-	functions.CreateTopic(name, numPartitions, replicationFactor)
+	fmt.Print(core.CreateTopic(name, numPartitions, replicationFactor))
 }
 
 func deleteTopic(cmd cobraCmd, args cobraArgs) {
 	name, _ := cmd.Flags().GetString("name")
 
-	functions.DeleteTopic(name)
+	fmt.Print(core.DeleteTopic(name))
 }
 
 func listTopics(cmd cobraCmd, args cobraArgs) {
-	functions.ListTopics()
+	core.ListTopics()
 }

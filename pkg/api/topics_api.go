@@ -10,24 +10,32 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type TopicRequest struct {
+type CreateTopicRequest struct {
 	Name              string `json:"name"`
 	Partitions        int    `json:"partitions"`
 	ReplicationFactor int    `json:"replication_factor"`
 }
 
+type DeleteTopicRequest struct {
+	Name string `json:"name"`
+}
+
 func CreateTopicHandler(w http.ResponseWriter, r *http.Request) {
-	var req TopicRequest
+	var req CreateTopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON input", http.StatusBadRequest)
 		return
 	}
+
+	// validate create topic parameters shared function
 
 	if req.Name == "" || req.Partitions < 1 || req.ReplicationFactor < 1 {
 		http.Error(w, "Invalid topic parameters", http.StatusBadRequest)
 		return
 	}
 
+	// check session authentication shared function
+	// needs shared error handling
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
 		http.Error(w, "No active session", http.StatusUnauthorized)

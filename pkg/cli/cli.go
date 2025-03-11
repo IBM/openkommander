@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"reflect"
-
 	"github.com/spf13/cobra"
 )
 
@@ -25,76 +23,65 @@ type OkCmd struct {
 	Flags                  []OkFlag
 	Aliases                []string
 	EnforceFlagConstraints func(cmd cobraCmd)
+	RequiredFlags          []string
+	Args                   []string
 }
 
-type OkParentCmd struct {
-	Use                    string
-	Short                  string
-	Long                   string
-	Flags                  []OkFlag
-	Aliases                []string
-	EnforceFlagConstraints func(cmd cobraCmd)
-}
+type OkParentCmd = OkCmd
 
 func Init() cobraCmd {
-	return RegisterCommands(GetRootCommands())
+	return RegisterCommands(RootCommandList{})
+}
+
+type CommandList interface {
+	GetParentCommand() *OkParentCmd
+	GetCommands() []*OkCmd
+	GetSubcommands() []CommandList
 }
 
 // Go through commands recursively and build tree of commands
-func RegisterCommands(commands any) cobraCmd {
-	var rValue = reflect.Indirect(reflect.ValueOf(commands))
+func RegisterCommands(commandList CommandList) cobraCmd {
+	if commandList == nil {
+		return nil
+	}
 
-	var parentCmd cobraCmd
-	var cmd cobraCmd
-	var okParentCmd *OkParentCmd
-	var okCmd *OkCmd
+	var parentCommand = cobraCmdFromOkCmd(commandList.GetParentCommand())
 
-	var subcommands = make([]*cobra.Command, 0)
+	for _, command := range commandList.GetCommands() {
+		parentCommand.AddCommand(cobraCmdFromOkCmd(command))
+	}
 
-	for i := range rValue.NumField() {
-		var field = rValue.Field(i)
+	for _, subcommand := range commandList.GetSubcommands() {
+		parentCommand.AddCommand(RegisterCommands(*subcommand))
+	}
 
-		switch field.Type() {
-		case reflect.TypeOf(&OkParentCmd{}):
-			okParentCmd = field.Interface().(*OkParentCmd)
-			parentCmd = &cobra.Command{
-				Use:   okParentCmd.Use,
-				Short: okParentCmd.Short,
+	return parentCommand
+}
+
+func cobraCmdFromOkCmd(command *OkCmd) cobraCmd {
+	cmd := &cobra.Command{
+		Use:     command.Use,
+		Short:   command.Short,
+		Long:    command.Long,
+		Run:     command.Run,
+		Aliases: command.Aliases,
+	}
+
+	if command.Flags != nil {
+		for _, flag := range command.Flags {
+			switch flag.ValueType {
+			case "string":
+				cmd.Flags().StringP(flag.Name, flag.ShortName, "", flag.Usage)
+			case "int":
+				cmd.Flags().IntP(flag.Name, flag.ShortName, 0, flag.Usage)
 			}
-		case reflect.TypeOf(&OkCmd{}):
-			okCmd = field.Interface().(*OkCmd)
-			cmd = &cobra.Command{
-				Use:   okCmd.Use,
-				Short: okCmd.Short,
-				Run:   okCmd.Run,
-			}
-
-			if okCmd.Flags != nil {
-				for _, flag := range okCmd.Flags {
-					switch flag.ValueType {
-					case "string":
-						cmd.Flags().StringP(flag.Name, flag.ShortName, "", flag.Usage)
-					case "int":
-						cmd.Flags().IntP(flag.Name, flag.ShortName, 0, flag.Usage)
-					}
-				}
-
-				if okCmd.EnforceFlagConstraints != nil {
-					okCmd.EnforceFlagConstraints(cmd)
-				}
-			}
-
-			subcommands = append(subcommands, cmd)
-		case reflect.TypeOf(&RootChildren{}):
-			rootChildren := field.Interface().(*RootChildren)
-			parentCmd.AddCommand(RegisterCommands(rootChildren.Server))
-			parentCmd.AddCommand(RegisterCommands(rootChildren.Topic))
 		}
 	}
 
-	for _, cmd := range subcommands {
-		parentCmd.AddCommand(cmd)
+	if len(command.RequiredFlags) > 0 {
+		cmd.MarkFlagsRequiredTogether(command.RequiredFlags...)
+		cmd.Flags().
 	}
 
-	return parentCmd
+	return cmd
 }
