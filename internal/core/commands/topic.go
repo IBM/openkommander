@@ -41,7 +41,6 @@ func CreateTopic(topicName string, numPartitions, replicationFactor int) (succes
 		}
 	}
 
-	// Could return a Success[Topic] object if we want to abstract more
 	return fmt.Sprintf("Successfully created topic '%s' with %d partitions and replication factor %d",
 		topicName, numPartitions, replicationFactor), nil
 }
