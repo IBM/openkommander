@@ -163,7 +163,13 @@ OpenKommander provides a set of commands to manage Kafka topics:
    Successfully deleted topic 'my-new-topic'
    ```
 
-9. End session and exit:
+10. Update a topic:
+   ```bash
+   $ ok topics update -n my-new-topic -p 4
+   Successfully updated topic 'my-new-topic' to 4 partitions.
+   ```
+
+11. End session and exit:
    ```bash
    $ ok logout
    Logged out successfully!
