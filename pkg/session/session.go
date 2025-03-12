@@ -170,7 +170,10 @@ func init() {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
-	viper.ReadInConfig()
+	err := viper.ReadInConfig()
+	if err != nil {
+		fmt.Println("Error reading config file:", err)
+	}
 
 	currentSession = &session{
 		brokers:         []string{},
@@ -179,7 +182,10 @@ func init() {
 		adminClient:     nil,
 	}
 
-	loadSession()
+	err = loadSession()
+	if err != nil {
+		fmt.Println("Error loading session:", err)
+	}
 }
 
 func Login() {
@@ -210,7 +216,10 @@ func Login() {
 	client, err := currentSession.Connect(ctx)
 	if client != nil && err == nil {
 		fmt.Println("Logged in successfully!")
-		saveSession()
+		err = saveSession()
+		if err != nil {
+			fmt.Println("Error saving session:", err)
+		}
 	} else {
 		fmt.Printf("Error connecting to cluster: %v\n", err)
 	}
@@ -223,7 +232,10 @@ func Logout() {
 	}
 
 	currentSession.Disconnect()
-	saveSession()
+	err := saveSession()
+	if err != nil {
+		fmt.Println("Error saving session:", err)
+	}
 }
 
 func DisplaySession() {

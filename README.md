@@ -20,6 +20,7 @@ OpenKommander is a command line utility and admin UI for Apache Kafka compatible
 
 3. **Start the development environment**
    ```bash
+   make setup
    make dev
    ```
 
@@ -83,7 +84,23 @@ All commands start with prefix `ok`
 | `metadata` | Display cluster information | None | ok metadata |
 | `rest` | Display rest server information | brokers | ok rest --brokers kafka:9093 |
 | `help` | Display available commands | None | 
-ßßß
+
+### Topics Management
+
+OpenKommander provides a set of commands to manage Kafka topics:
+
+| Command | Description | Interactive Prompts |
+|---------|-------------|-------------------|
+| `topics create` | Create a new Kafka topic | Topic name, partitions, replication factor |
+| `topics list` | List all available topics | None |
+| `topics delete` | Delete an existing topic | Topic name |
+
+| Endpoint | Method | Description | Request Body | Response |
+|----------|--------|-------------|-------------|----------|
+| `/topics` | GET | List all topics | None | JSON object with topic details |
+| `/topics` | POST | Create a new topic | JSON with name, partitions, and replication_factor | Success message |
+| `/topics/{topicName}` | DELETE | Delete a topic | None | Success message |
+
 
 ### Example Workflow
 
@@ -121,17 +138,41 @@ All commands start with prefix `ok`
     - kafka:9093 (ID: 1)
    ```
 
-6. Start REST server:
+6. Create a new topic:
+   ```bash
+   $ ok topics create
+   Enter topic name: my-new-topic
+   Enter number of partitions (default 1): 3
+   Enter replication factor (default 1): 2
+   Successfully created topic 'my-new-topic' with 3 partitions and replication factor 2
+   ```
+
+7. List all topics:
+   ```bash
+   $ ok topics list
+   Topics:
+   --------
+   Name: my-new-topic
+   Partitions: 3
+   Replication Factor: 2
+   ```
+
+8. Delete a topic:
+   ```bash
+   $ ok topics delete
+   Enter topic name to delete: my-new-topic
+   Successfully deleted topic 'my-new-topic'
+   ```
+   
+9. Start REST server:
    ```bash
    $ ok rest --brokers kafka:9093
    ```
 
-7. End session and exit:
+10. End session and exit:
    ```bash
    $ ok logout
    Logged out successfully!
-   $ ok exit
-   Exiting application.
    ```
 
 ### Rest Endpoints

@@ -1,8 +1,7 @@
 package commands
 
 import (
-	"fmt"
-
+	"github.com/IBM/openkommander/pkg/rest"
 	"github.com/spf13/cobra"
 )
 
@@ -39,26 +38,17 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		},
 	}
 
-	brokersCmd := &cobra.Command{
-		Use:   "brokers",
-		Short: "Broker management commands",
-	}
-
-	listBrokersCmd := &cobra.Command{
-		Use:   "list",
-		Short: "List all brokers",
+	serverCmd := &cobra.Command{
+		Use:   "server",
+		Short: "Start the OpenKommander REST API server",
 		Run: func(cmd *cobra.Command, args []string) {
-			brokersListCommand()
+			rest.StartRESTServer()
 		},
 	}
 
-	brokersCmd.AddCommand(listBrokersCmd)
-
-	rootCmd.AddCommand(brokersCmd)
-
-	serverCmd := restServerCommands()
-
 	topicsCmd := topicsCommands()
+
+	rootCmd.AddCommand(serverCmd)
 
 	rootCmd.AddCommand(
 		loginCmd,
@@ -69,33 +59,6 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		serverCmd,
 		restCmd,
 	)
-}
-
-func restServerCommands() *cobra.Command {
-	serverCmd := &cobra.Command{
-		Use:   "server",
-		Short: "REST server commands",
-	}
-
-	startServerCmd := &cobra.Command{
-		Use:   "start",
-		Short: "Start the REST server",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Starting REST server...\n")
-		},
-	}
-
-	stopServerCmd := &cobra.Command{
-		Use:   "stop",
-		Short: "Stop the REST server",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Stopping REST server...\n")
-		},
-	}
-
-	serverCmd.AddCommand(startServerCmd, stopServerCmd)
-
-	return serverCmd
 }
 
 func topicsCommands() *cobra.Command {
