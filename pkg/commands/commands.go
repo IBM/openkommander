@@ -57,6 +57,7 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		metadataCmd,
 		topicsCmd,
 		serverCmd,
+		restCmd,
 	)
 }
 

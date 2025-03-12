@@ -78,12 +78,12 @@ All commands start with prefix `ok`
 
 | Command | Description | Arguments |
 |---------|-------------|-----------|
-| `login` | Connect to a Kafka cluster | None |
-| `logout` | End the current session | None |
-| `session` | Display current session information | None |
-| `metadata` | Display cluster information | None |
-| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete` |
-| `help` | Display available commands | None |
+| `login` | Connect to a Kafka cluster | None | ok login |
+| `logout` | End the current session | None | ok logout |
+| `session` | Display current session information | None | ok session |
+| `metadata` | Display cluster information | None | ok metadata |
+| `rest` | Display rest server information | brokers | ok rest --brokers kafka:9093 |
+| `help` | Display available commands | None | 
 
 ### Topics Management
 
@@ -100,6 +100,7 @@ OpenKommander provides a set of commands to manage Kafka topics:
 | `/topics` | GET | List all topics | None | JSON object with topic details |
 | `/topics` | POST | Create a new topic | JSON with name, partitions, and replication_factor | Success message |
 | `/topics/{topicName}` | DELETE | Delete a topic | None | Success message |
+
 
 ### Example Workflow
 
@@ -162,9 +163,33 @@ OpenKommander provides a set of commands to manage Kafka topics:
    Enter topic name to delete: my-new-topic
    Successfully deleted topic 'my-new-topic'
    ```
+   
+9. Start REST server:
+   ```bash
+   $ ok rest --brokers kafka:9093
+   ```
 
-9. End session and exit:
+10. End session and exit:
    ```bash
    $ ok logout
    Logged out successfully!
    ```
+
+### Rest Endpoints
+
+# List topics
+curl -X GET http://localhost:8080/topics
+
+# Create a topic
+curl -X POST http://localhost:8080/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-topic","partitions":2,"replication_factor":1}'
+
+# Delete a topic
+curl -X DELETE http://localhost:8080/topics/my-topic
+
+# Broker status
+curl -X GET http://localhost:8080/api/v1/status
+
+# Broker management
+curl -X GET http://localhost:8080/api/v1/brokers

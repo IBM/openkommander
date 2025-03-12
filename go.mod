@@ -3,6 +3,7 @@ module github.com/IBM/openkommander
 go 1.23.0
 
 require (
+
 	github.com/IBM/sarama v1.45.1
 	github.com/gorilla/mux v1.8.1
 	github.com/spf13/cobra v1.9.1
