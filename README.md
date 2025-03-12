@@ -82,7 +82,7 @@ All commands start with prefix `ok`
 | `logout` | End the current session | None |
 | `session` | Display current session information | None |
 | `metadata` | Display cluster information | None |
-| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete` |
+| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe` |
 | `help` | Display available commands | None |
 
 ### Topics Management
@@ -94,6 +94,7 @@ OpenKommander provides a set of commands to manage Kafka topics:
 | `topics create` | Create a new Kafka topic | Topic name, partitions, replication factor |
 | `topics list` | List all available topics | None |
 | `topics delete` | Delete an existing topic | Topic name |
+| `topics describe` | Describe an existing topic | Topic name |
 
 | Endpoint | Method | Description | Request Body | Response |
 |----------|--------|-------------|-------------|----------|
@@ -158,7 +159,7 @@ OpenKommander provides a set of commands to manage Kafka topics:
 
 8. Describe a topic:
    ```bash
-   $ ok topics describe my-new-topic
+   $ ok topic describe my-new-topic
    Topic Metadata:
       Topic Name: my-new-topic
       Replication Factor: 1
