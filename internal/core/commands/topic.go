@@ -82,3 +82,31 @@ func ListTopics() (topicMap map[string]sarama.TopicDetail, f *Failure) {
 
 	return topics, nil
 }
+
+func DescribeTopic(topicName string) (*sarama.TopicMetadata, *Failure) {
+	client, validateFailure := GetAdminClient()
+	if validateFailure != nil {
+		return nil, validateFailure
+	}
+
+	metadata, err := client.DescribeTopics([]string{topicName})
+	if err != nil || len(metadata) == 0 {
+		return nil, NewFailure(fmt.Sprintf("Error describing topic '%s': %v", topicName, err), http.StatusInternalServerError)
+	}
+
+	return metadata[0], nil
+}
+
+func DescribeTopicConfig(topicName string) ([]sarama.ConfigEntry, *Failure) {
+	client, validateFailure := GetAdminClient()
+	if validateFailure != nil {
+		return nil, validateFailure
+	}
+
+	configs, err := client.DescribeConfig(sarama.ConfigResource{Type: sarama.TopicResource, Name: topicName})
+	if err != nil {
+		return nil, NewFailure(fmt.Sprintf("Error describing configs for topic '%s': %v", topicName, err), http.StatusInternalServerError)
+	}
+
+	return configs, nil
+}
