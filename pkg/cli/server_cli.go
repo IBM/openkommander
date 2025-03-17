@@ -1,7 +1,5 @@
 package cli
 
-import "github.com/IBM/openkommander/pkg/rest"
-
 type ServerCommandList struct{}
 
 func (ServerCommandList) GetParentCommand() *OkParentCmd {
@@ -26,5 +24,5 @@ func (ServerCommandList) GetSubcommands() []CommandList {
 }
 
 func startRESTServer(cmd cobraCmd, args cobraArgs) {
-	rest.StartRESTServer()
+	
 }
