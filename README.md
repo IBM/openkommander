@@ -83,7 +83,9 @@ All commands start with prefix `ok`
 | `session` | Display current session information | None | ok session |
 | `metadata` | Display cluster information | None | ok metadata |
 | `rest` | Display rest server information | brokers | ok rest --brokers kafka:9093 |
+| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe` |
 | `help` | Display available commands | None | 
+
 
 ### Topics Management
 
@@ -94,6 +96,7 @@ OpenKommander provides a set of commands to manage Kafka topics:
 | `topics create` | Create a new Kafka topic | Topic name, partitions, replication factor |
 | `topics list` | List all available topics | None |
 | `topics delete` | Delete an existing topic | Topic name |
+| `topics describe` | Describe an existing topic | Topic name |
 
 | Endpoint | Method | Description | Request Body | Response |
 |----------|--------|-------------|-------------|----------|
@@ -157,7 +160,44 @@ OpenKommander provides a set of commands to manage Kafka topics:
    Replication Factor: 2
    ```
 
-8. Delete a topic:
+8. Describe a topic:
+   ```bash
+   $ ok topic describe my-new-topic
+   Topic Metadata:
+      Topic Name: my-new-topic
+      Replication Factor: 1
+      Version: 10
+      UUID: HHdnzvFrRpy1qIuLZuNO-w
+      Is Internal: false
+      Authorized Operations: -2147483648
+
+   Topic Partitions:
+
+   | PARTITION ID | LEADER | REPLICAS | IN-SYNC REPLICAS (ISR) |
+   |--------------|--------|----------|------------------------|
+   | 0            | 1      | [1 2]    | [1 2]                  |
+   | 1            | 2      | [2 3]    | [2]                    |
+   | 2            | 3      | [3 1]    | [3 1]                  |
+
+   Topic Configurations:
+
+   | CONFIG NAME                             | VALUE               |
+   |-----------------------------------------|---------------------|
+   | compression.type                        | producer            |
+   | remote.log.delete.on.disable            | false               |
+   | leader.replication.throttled.replicas   |                     |
+   | remote.storage.enable                   | false               |
+   | message.downconversion.enable           | true                |
+   | min.insync.replicas                     | 1                   |
+   | segment.jitter.ms                       | 0                   |
+   | remote.log.copy.disable                 | false               |
+   | local.retention.ms                      | -2                  |
+   | cleanup.policy                          | delete              |
+   | flush.ms                                | 9223372036854775807 |
+   ......
+
+   ```
+9. Delete a topic:
    ```bash
    $ ok topics delete
    Enter topic name to delete: my-new-topic
@@ -173,7 +213,6 @@ OpenKommander provides a set of commands to manage Kafka topics:
    ```bash
    $ ok logout
    Logged out successfully!
-   ```
 
 ### Rest Endpoints
 
@@ -193,3 +232,4 @@ curl -X GET http://localhost:8080/api/v1/status
 
 # Broker management
 curl -X GET http://localhost:8080/api/v1/brokers
+
