@@ -37,7 +37,7 @@ func NewServer(port string, brokers []string) (*Server, error) {
 	config.Version = sarama.V2_8_0_0
 
 	client, err := sarama.NewClient(brokers, config)
-	if (err != nil) {
+	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka client: %v", err)
 	}
 
@@ -59,16 +59,8 @@ func NewServer(port string, brokers []string) (*Server, error) {
 	return s, nil
 }
 
-func StartRESTServer(port string, brokers []string) {
-	s, err := NewServer(port, brokers)
-	if err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
-	go s.handleShutdown()
-	log.Printf("REST API server running on port %s...", s.httpServer.Addr)
-	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatalf("Server error: %v", err)
-	}
+func (s *Server) Start() error {
+	return s.httpServer.ListenAndServe()
 }
 
 func (s *Server) Stop(ctx context.Context) error {
@@ -78,16 +70,29 @@ func (s *Server) Stop(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-func (s *Server) handleShutdown() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+func StartRESTServer(port string, brokers []string) {
+	s, err := NewServer(port, brokers)
+	if err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+	
+	// Set up shutdown handler
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-	if err := s.Stop(ctx); err != nil {
-		log.Printf("Error during server shutdown: %v", err)
+		if err := s.Stop(ctx); err != nil {
+			log.Printf("Error during server shutdown: %v", err)
+		}
+	}()
+	
+	log.Printf("REST API server running on port %s...", port)
+	if err := s.Start(); err != http.ErrServerClosed {
+		log.Fatalf("Server error: %v", err)
 	}
 }
 
@@ -210,6 +215,7 @@ func sendJSON(w http.ResponseWriter, status int, payload interface{}) {
 }
 
 func sendError(w http.ResponseWriter, message string, err error) {
+	log.Printf("ERROR: %s: %v", message, err)
 	sendJSON(w, http.StatusInternalServerError, Response{
 		Status:  "error",
 		Message: fmt.Sprintf("%s: %v", message, err),

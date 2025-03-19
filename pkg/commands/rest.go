@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -39,19 +40,20 @@ func handleRestServer(cmd *cobra.Command, args []string) {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		if err := srv.Start(); err != nil {
+		fmt.Printf("REST server started on port %s\n", port)
+		fmt.Println("\nAvailable endpoints:")
+		fmt.Println("  GET    /api/v1/status        - Check server status")
+		fmt.Println("  GET    /api/v1/topics        - List all topics")
+		fmt.Println("  POST   /api/v1/topics        - Create a new topic")
+		fmt.Println("  DELETE /api/v1/topics?name=X - Delete a topic")
+		fmt.Println("  GET    /api/v1/brokers       - List all brokers")
+		fmt.Println("\nPress Ctrl+C to stop the server")
+		
+		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("Server error: %v\n", err)
 			os.Exit(1)
 		}
 	}()
-
-	fmt.Printf("REST server started on port %s\n", port)
-	fmt.Println("\nAvailable endpoints:")
-	fmt.Println("  GET    /api/v1/status        - Check server status")
-	fmt.Println("  GET    /api/v1/topics        - List all topics")
-	fmt.Println("  POST   /api/v1/topics        - Create a new topic")
-	fmt.Println("  DELETE /api/v1/topics?name=X - Delete a topic")
-	fmt.Println("\nPress Ctrl+C to stop the server")
 
 	<-done
 	fmt.Println("\nShutting down server...")
