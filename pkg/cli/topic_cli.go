@@ -48,6 +48,16 @@ func (m TopicCommandList) GetCommands() []*OkCmd {
 			Run:   describeTopic,
 			Args:  cobra.ExactArgs(1),
 		},
+		{ // Update topic
+			Use:   "update",
+			Short: "Update an existing topic to create new partitions",
+			Run:   updateTopic,
+			Flags: []OkFlag{
+				NewOkFlag(OkFlagString, "name", "n", "Specify the name of the topic"),
+				NewOkFlag(OkFlagInt, "new-partitions", "p", "Specify the new partition count for the topic"),
+			},
+			RequiredFlags: []string{"name", "new-partitions"},
+		},
 	}
 }
 
@@ -159,4 +169,22 @@ func describeTopic(cmd cobraCmd, args cobraArgs) {
 
 	configTable.SetStyle(table.StyleLight)
 	configTable.Render()
+}
+
+// Update topic
+func updateTopic(cmd cobraCmd, args cobraArgs) {
+	topicName, _ := cmd.Flags().GetString("name")
+	newPartitions, _ := cmd.Flags().GetInt("new-partitions")
+
+	if newPartitions <= 0 {
+		fmt.Println("Error: Invalid partition count.")
+		return
+	}
+
+	successMessage, failure := commands.UpdateTopic(topicName, newPartitions)
+	if failure != nil {
+		fmt.Println(failure.Err)
+		return
+	}
+	fmt.Println(successMessage)
 }
