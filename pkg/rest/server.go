@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -29,67 +33,70 @@ type TopicRequest struct {
 }
 
 func NewServer(port string, brokers []string) (*Server, error) {
-
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_8_0_0
 
 	client, err := sarama.NewClient(brokers, config)
-	if err != nil {
+	if (err != nil) {
 		return nil, fmt.Errorf("failed to create Kafka client: %v", err)
 	}
 
-	server := &Server{
+	s := &Server{
 		kafkaClient: client,
 		startTime:   time.Now(),
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/status", s.handleStatus)
+	mux.HandleFunc("/api/v1/topics", s.handleTopics)
+	mux.HandleFunc("/api/v1/brokers", s.handleBrokers)
 
-	mux.HandleFunc("/api/v1/status", server.handleStatus)
-	mux.HandleFunc("/api/v1/topics", server.handleTopics)
-	mux.HandleFunc("/api/v1/brokers", server.handleBrokers)
-
-	server.httpServer = &http.Server{
+	s.httpServer = &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
 
-	return server, nil
+	return s, nil
+}
+
+func StartRESTServer(port string, brokers []string) {
+	s, err := NewServer(port, brokers)
+	if err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+	go s.handleShutdown()
+	log.Printf("REST API server running on port %s...", s.httpServer.Addr)
+	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("Server error: %v", err)
+	}
+}
+
+func (s *Server) Stop(ctx context.Context) error {
+	if err := s.kafkaClient.Close(); err != nil {
+		return fmt.Errorf("failed to close Kafka client: %v", err)
+	}
+	return s.httpServer.Shutdown(ctx)
+}
+
+func (s *Server) handleShutdown() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := s.Stop(ctx); err != nil {
+		log.Printf("Error during server shutdown: %v", err)
+	}
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	brokers := s.kafkaClient.Brokers()
 	kafkaStatus := "disconnected"
 	if len(brokers) > 0 {
 		kafkaStatus = "connected"
 	}
-
-	clusterInfo := make(map[string]interface{})
-
-	clusterInfo["api_version"] = "1.0.0"
-	clusterInfo["kafka_version"] = s.kafkaClient.Config().Version.String()
-
-	brokerDetails := make([]map[string]interface{}, 0)
-	for _, broker := range brokers {
-
-		connected, err := broker.Connected()
-		if err != nil {
-			connected = false
-		}
-
-		brokerInfo := map[string]interface{}{
-			"id":        broker.ID(),
-			"addr":      broker.Addr(),
-			"connected": connected,
-		}
-		brokerDetails = append(brokerDetails, brokerInfo)
-	}
-	clusterInfo["broker_details"] = brokerDetails
 
 	response := Response{
 		Status:  "ok",
@@ -97,11 +104,9 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"kafka_status":   kafkaStatus,
 			"brokers_count":  len(brokers),
-			"cluster_info":   clusterInfo,
 			"uptime_seconds": time.Since(s.startTime).Seconds(),
 		},
 	}
-
 	sendJSON(w, http.StatusOK, response)
 }
 
@@ -118,23 +123,35 @@ func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
+	brokers := s.kafkaClient.Brokers()
+	brokerList := make([]map[string]interface{}, 0)
 
-	if refreshable, ok := s.kafkaClient.(interface{ RefreshMetadata() error }); ok {
-		refreshable.RefreshMetadata()
+	for _, broker := range brokers {
+		connected, err := broker.Connected()
+		if err != nil {
+			connected = false
+		}
+
+		brokerInfo := map[string]interface{}{
+			"id":        broker.ID(),
+			"addr":      broker.Addr(),
+			"connected": connected,
+			"rack":      broker.Rack(),
+		}
+		brokerList = append(brokerList, brokerInfo)
 	}
 
+	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: brokerList})
+}
+
+func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
 	topics, err := s.kafkaClient.Topics()
 	if err != nil {
 		sendError(w, "Failed to list topics", err)
 		return
 	}
-
-	response := Response{
-		Status: "ok",
-		Data:   topics,
-	}
-	sendJSON(w, http.StatusOK, response)
+	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: topics})
 }
 
 func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
@@ -144,12 +161,7 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	brokerList := make([]string, 0)
-	for _, broker := range s.kafkaClient.Brokers() {
-		brokerList = append(brokerList, broker.Addr())
-	}
-
-	admin, err := sarama.NewClusterAdmin(brokerList, s.kafkaClient.Config())
+	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 	if err != nil {
 		sendError(w, "Failed to create admin client", err)
 		return
@@ -165,11 +177,7 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := Response{
-		Status:  "ok",
-		Message: fmt.Sprintf("Topic '%s' created successfully", req.Name),
-	}
-	sendJSON(w, http.StatusCreated, response)
+	sendJSON(w, http.StatusCreated, Response{Status: "ok", Message: fmt.Sprintf("Topic '%s' created successfully", req.Name)})
 }
 
 func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
@@ -179,12 +187,7 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	brokerList := make([]string, 0)
-	for _, broker := range s.kafkaClient.Brokers() {
-		brokerList = append(brokerList, broker.Addr())
-	}
-
-	admin, err := sarama.NewClusterAdmin(brokerList, s.kafkaClient.Config())
+	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 	if err != nil {
 		sendError(w, "Failed to create admin client", err)
 		return
@@ -197,39 +200,7 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := Response{
-		Status:  "ok",
-		Message: fmt.Sprintf("Topic '%s' deleted successfully", topicName),
-	}
-	sendJSON(w, http.StatusOK, response)
-}
-
-func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
-	brokers := s.kafkaClient.Brokers()
-	brokerList := make([]map[string]interface{}, 0)
-
-	for _, broker := range brokers {
-
-		connected, err := broker.Connected()
-		if err != nil {
-
-			connected = false
-		}
-
-		brokerInfo := map[string]interface{}{
-			"id":        broker.ID(),
-			"addr":      broker.Addr(),
-			"connected": connected,
-			"rack":      broker.Rack(),
-		}
-		brokerList = append(brokerList, brokerInfo)
-	}
-
-	response := Response{
-		Status: "ok",
-		Data:   brokerList,
-	}
-	sendJSON(w, http.StatusOK, response)
+	sendJSON(w, http.StatusOK, Response{Status: "ok", Message: fmt.Sprintf("Topic '%s' deleted successfully", topicName)})
 }
 
 func sendJSON(w http.ResponseWriter, status int, payload interface{}) {
@@ -239,22 +210,8 @@ func sendJSON(w http.ResponseWriter, status int, payload interface{}) {
 }
 
 func sendError(w http.ResponseWriter, message string, err error) {
-	response := Response{
+	sendJSON(w, http.StatusInternalServerError, Response{
 		Status:  "error",
 		Message: fmt.Sprintf("%s: %v", message, err),
-	}
-	sendJSON(w, http.StatusInternalServerError, response)
-}
-
-func (s *Server) Start() error {
-	fmt.Printf("REST server starting on port %s\n", s.httpServer.Addr)
-	fmt.Printf("Connected to Kafka brokers: %v\n", s.kafkaClient.Brokers())
-	return s.httpServer.ListenAndServe()
-}
-
-func (s *Server) Stop(ctx context.Context) error {
-	if err := s.kafkaClient.Close(); err != nil {
-		return fmt.Errorf("failed to close Kafka client: %v", err)
-	}
-	return s.httpServer.Shutdown(ctx)
+	})
 }
