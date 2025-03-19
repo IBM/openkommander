@@ -110,3 +110,32 @@ func DescribeTopicConfig(topicName string) ([]sarama.ConfigEntry, *Failure) {
 
 	return configs, nil
 }
+
+func UpdateTopic(topicName string, newPartitions int) (successMessage string, f *Failure) {
+	client, validateFailure := GetAdminClient()
+	if validateFailure != nil {
+		return "", validateFailure
+	}
+
+	if topicName == "" {
+		return "", NewFailure("Topic name cannot be empty", http.StatusInternalServerError)
+	}
+
+	topicMetadata, err := client.DescribeTopics([]string{topicName})
+	if err != nil || len(topicMetadata) == 0 {
+		return "", NewFailure(fmt.Sprintf("Error describing topic '%s': %v", topicName, err), http.StatusInternalServerError)
+	}
+
+	topic := topicMetadata[0]
+	existingPartitions := len(topic.Partitions)
+	if newPartitions <= existingPartitions {
+		return "", NewFailure("New partition count must be greater than the existing partitions", http.StatusBadRequest)
+	}
+
+	err = client.CreatePartitions(topicName, int32(newPartitions), nil, false)
+	if err != nil {
+		return "", NewFailure(fmt.Sprintf("Error updating partitions for topic '%s': %v", topicName, err), http.StatusInternalServerError)
+	}
+
+	return fmt.Sprintf("Successfully updated topic '%s' to %d partitions.", topicName, newPartitions), nil
+}
