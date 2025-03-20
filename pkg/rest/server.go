@@ -227,7 +227,9 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 func sendJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("Failed to encode JSON response: %v", err)
+	}
 }
 
 func sendError(w http.ResponseWriter, message string, err error) {
