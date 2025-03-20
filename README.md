@@ -78,12 +78,12 @@ All commands start with prefix `ok`
 
 | Command | Description | Arguments |
 |---------|-------------|-----------|
-| `login` | Connect to a Kafka cluster | None | ok login |
-| `logout` | End the current session | None | ok logout |
-| `session` | Display current session information | None | ok session |
-| `metadata` | Display cluster information | None | ok metadata |
-| `server` | Display rest server information | brokers | ok server start --brokers kafka:9093 |
-| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe` |
+| `login` | Connect to a Kafka cluster | None |
+| `logout` | End the current session | None |
+| `session` | Display current session information | None |
+| `metadata` | Display cluster information | None |
+| `server` | Display rest server information | Subcommands: `start` |
+| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe`, `update` |
 | `help` | Display available commands | None | 
 
 
