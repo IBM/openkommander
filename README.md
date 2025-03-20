@@ -105,6 +105,29 @@ OpenKommander provides a set of commands to manage Kafka topics:
 | `/topics/{topicName}` | DELETE | Delete a topic | None | Success message |
 
 
+
+### Rest Endpoints
+
+#### List topics
+curl -X GET http://localhost:8081/api/v1/topics
+
+#### Create a topic
+curl -X POST http://localhost:8081/api/v1/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-topic","partitions":2,"replication_factor":1}'
+
+#### Delete a topic
+curl -X DELETE http://localhost:8081/api/v1/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-topic"}'
+
+#### Broker status
+curl -X GET http://localhost:8081/api/v1/status
+
+#### Broker management
+curl -X GET http://localhost:8081/api/v1/brokers
+
+
 ### Example Workflow
 
 1. Build the CLI:
@@ -209,29 +232,15 @@ OpenKommander provides a set of commands to manage Kafka topics:
    $ ok server start --brokers kafka:9093
    ```
 
-10. End session and exit:
-   ```bash
-   $ ok logout
-   Logged out successfully!
+10. Update a topic:
+    ```bash
+    $ ok topics update -n my-new-topic -p 4
+    Successfully updated topic 'my-new-topic' to 4 partitions.
+    ```
 
-### Rest Endpoints
-
-# List topics
-curl -X GET http://localhost:8081/api/v1/topics
-
-# Create a topic
-curl -X POST http://localhost:8081/api/v1/topics \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-topic","partitions":2,"replication_factor":1}'
-
-# Delete a topic
-curl -X DELETE http://localhost:8081/api/v1/topics \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-topic"}'
-
-# Broker status
-curl -X GET http://localhost:8081/api/v1/status
-
-# Broker management
-curl -X GET http://localhost:8081/api/v1/brokers
+11. End session and exit:
+    ```bash
+    $ ok logout
+    Logged out successfully!
+    ```
 
