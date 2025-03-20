@@ -1,246 +1,140 @@
 # OpenKommander
 
-OpenKommander is a command line utility and admin UI for Apache Kafka compatible brokers.
+OpenKommander is a command-line tool and API server for managing Apache Kafka clusters. It provides a unified interface for common Kafka operations through both CLI and REST API, powered by [IBM Sarama](https://github.com/IBM/sarama) client library.
 
-## Prerequisites
+## ⚠️ DISCLAIMER ⚠️
 
-- [Podman](https://podman.io/getting-started/installation) (required for running the development environment)
-- [Make](https://www.gnu.org/software/make/) (required for running development commands)
+**⚠️ THIS SOFTWARE IS NOT INTENDED FOR PRODUCTION USE  ⚠️**
 
-## Development Environment Setup
+OpenKommander is currently in early development and is provided AS IS without warranty of any kind. Using this software in production environments may lead to:
 
-1. **Install Podman**
-   Follow the installation instructions for your operating system on the [Podman website](https://podman.io/getting-started/installation).
+- Data loss or corruption
+- Security vulnerabilities
+- Performance degradation
+- Operational instability
 
-2. **Clone the repository**
-   ```bash
-   git clone https://github.com/IBM/openkommander.git
-   cd openkommander
-   ```
+This tool is designed for development, testing, and educational purposes only. For production Kafka management, please use officially supported tools from the Apache Kafka ecosystem or commercial alternatives with proper support and security assurances.
 
-3. **Start the development environment**
-   ```bash
-   make setup
-   make dev
-   ```
+**⚠️ By using this software, you acknowledge the risks and agree that the authors and contributors cannot be held liable for any damages resulting from its use. ⚠️**
 
-4. **Execute into the container**
-    ```bash
-    podman exec -it openkommander-app-1 bash
-    ```
+## Architecture
 
-    Note: Replace `openkommander-app-1` in case your is different
+OpenKommander follows a modular architecture with these key components:
 
-5. **Build and install cli**
-    ```bash
-    make dev-run
-    ```
+- **CLI Commands**: Organized by functionality (topics, brokers, consumers, messages)
+- **API Server**: RESTful interface with corresponding endpoints to CLI commands
+- **[IBM Sarama](https://github.com/IBM/sarama) client library**: Core abstraction for interacting with Kafka clusters
+- **Configuration Management**: Flexible configuration for multiple clusters
+
+## Key Features
+
+- Topic management (create, list, delete, describe)
+- Message producing and consuming
+- Consumer group monitoring
+- Broker information
+- Multi-cluster support
+- Flexible authentication (SASL, TLS)
+- Interactive ReactJS-based web dashboard
+
+## Components
+
+- **Models**: Data structures for configuration and Kafka entities
+- **Lib**: Core utilities and client implementation
+- **Components**: Feature-specific implementations (CLI and API)
+- **Server**: API server implementation with route registration
+
+## CLI Commands
+
+```bash
+# Configuration and startup
+ok connect                                # Initialize default configuration
+ok server                                 # Start the API server
+
+# Topic Management
+ok topics list                            # List all topics
+ok topics create [topic-name] -p [partitions] -r [replication-factor]
+ok topics delete [topic-name]             # Delete a topic
+ok topics describe [topic-name]           # Show topic details
+ok topics consume [topic] [flags]         # Consume messages from a topic
+  --group string                          # Consumer group ID (optional)
+  --from-beginning                        # Consume messages from beginning of the topic
+
+# Consumer Group Management
+ok consumers list                         # List all consumer groups
+ok consumers describe [group-id]          # Describe a consumer group
+
+# Broker Management
+ok brokers                                # List information about Kafka brokers
+
+# Message Production
+ok produce [topic]                        # Produce a message to a Kafka topic
+  --key/-k string                         # Message key
+  --value/-v string                       # Message value
+  --file/-f string                        # Read message from file
+  --json/-j                               # Treat input as JSON
+
+# Cluster Management
+ok clusters list                          # List configured clusters
+
+# Global flags
+  --config string                         # Path to config file (defaults to $HOME/.config/openkommander.json)
+  --cluster string                        # Use named cluster from config
+```
+
+## API Endpoints
+
+```
+# Health Check
+GET /api/v1/health                        # Server health check
+
+# Topic Management
+GET /api/v1/topics                        # List all topics
+POST /api/v1/topics                       # Create a topic
+GET /api/v1/topics/:name                  # Get topic details
+DELETE /api/v1/topics/:name               # Delete a topic
+
+# Message Operations
+POST /api/v1/messages/:topic              # Produce a message to a topic
+
+# Broker Information
+GET /api/v1/brokers                       # List broker information
+
+# Consumer Group Management
+GET /api/v1/consumers                     # List all consumer groups
+GET /api/v1/consumers/:group              # Get consumer group details
+DELETE /api/v1/consumers/:id              # Stop a consumer
+
+# Cluster Management (multi-cluster mode)
+GET /api/v1/clusters                      # List all configured clusters
+GET /api/v1/clusters/:name                # Get cluster details
+
+# Cluster-specific endpoints
+GET /api/v1/clusters/:name/topics         # List topics in specific cluster
+POST /api/v1/clusters/:name/topics        # Create topic in specific cluster
+GET /api/v1/clusters/:name/brokers        # List brokers in specific cluster
+GET /api/v1/clusters/:name/consumers      # List consumer groups in specific cluster
+```
 
 ## Configuration
 
-The application uses a configuration file located at `config/config.yaml`. By default, it is configured for the development environment:
+Configuration is stored in `$HOME/.config/openkommander.json` with support for:
+- Multiple Kafka clusters
+- SASL authentication
+- TLS encryption
 
-```yaml
-kafka:
-  broker: kafka:9093
-```
+## Limitations
 
-### Custom Configuration
+- No schema registry support
+- No ACL management support
+- Limited message transformation options
+- etc.
 
-You can modify `config/config.yaml` to connect to different Kafka clusters:
+## TODO
 
-```yaml
-# Development environment (default)
-kafka:
-  broker: kafka:9093
-
-# Custom environment example
-kafka:
-  broker: localhost:9092  # For local Kafka installation
-  # broker: kafka-cluster.example.com:9093  # For remote cluster
-```
-
-The configuration file is loaded when the application starts. If you need to connect to a different broker after starting the application, you can use the `ok login` command with a custom broker address:
-
-```bash
-$ ok login
-Enter broker address [kafka:9093]: localhost:9092
-```
-
-## CLI Usage
-
-After running the application, you can use the following commands:
-
-
-### Commands
-
-All commands start with prefix `ok`
-
-| Command | Description | Arguments |
-|---------|-------------|-----------|
-| `login` | Connect to a Kafka cluster | None |
-| `logout` | End the current session | None |
-| `session` | Display current session information | None |
-| `metadata` | Display cluster information | None |
-| `server` | Display rest server information | Subcommands: `start` |
-| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe`, `update` |
-| `help` | Display available commands | None | 
-
-
-### Topics Management
-
-OpenKommander provides a set of commands to manage Kafka topics:
-
-| Command | Description | Interactive Prompts |
-|---------|-------------|-------------------|
-| `topics create` | Create a new Kafka topic | Topic name, partitions, replication factor |
-| `topics list` | List all available topics | None |
-| `topics delete` | Delete an existing topic | Topic name |
-| `topics describe` | Describe an existing topic | Topic name |
-
-| Endpoint | Method | Description | Request Body | Response |
-|----------|--------|-------------|-------------|----------|
-| `/topics` | GET | List all topics | None | JSON object with topic details |
-| `/topics` | POST | Create a new topic | JSON with name, partitions, and replication_factor | Success message |
-| `/topics/{topicName}` | DELETE | Delete a topic | None | Success message |
-
-
-
-### Rest Endpoints
-
-#### List topics
-curl -X GET http://localhost:8081/api/v1/topics
-
-#### Create a topic
-curl -X POST http://localhost:8081/api/v1/topics \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-topic","partitions":2,"replication_factor":1}'
-
-#### Delete a topic
-curl -X DELETE http://localhost:8081/api/v1/topics \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-topic"}'
-
-#### Broker status
-curl -X GET http://localhost:8081/api/v1/status
-
-#### Broker management
-curl -X GET http://localhost:8081/api/v1/brokers
-
-
-### Example Workflow
-
-1. Build the CLI:
-   ```bash
-   make build
-   ```
-
-2. Install the CLI:
-   ```bash
-   make install
-   ```
-
-   Note: It may fail due to permission if needed add `sudo` for example
-   ```bash
-   sudo make install
-   ```
-
-3. Connect to the cluster:
-   ```bash
-   $ ok login
-   Connected to Kafka cluster at kafka:9093
-   ```
-
-4. View session information:
-   ```bash
-   $ ok session
-   Current session: Brokers: [kafka:9093], Authenticated: true
-   ```
-
-5. View cluster information:
-   ```bash
-   $ ok metadata
-   Cluster Brokers:
-    - kafka:9093 (ID: 1)
-   ```
-
-6. Create a new topic:
-   ```bash
-   $ ok topics create
-   Enter topic name: my-new-topic
-   Enter number of partitions (default 1): 3
-   Enter replication factor (default 1): 2
-   Successfully created topic 'my-new-topic' with 3 partitions and replication factor 2
-   ```
-
-7. List all topics:
-   ```bash
-   $ ok topics list
-   Topics:
-   --------
-   Name: my-new-topic
-   Partitions: 3
-   Replication Factor: 2
-   ```
-
-8. Describe a topic:
-   ```bash
-   $ ok topic describe my-new-topic
-   Topic Metadata:
-      Topic Name: my-new-topic
-      Replication Factor: 1
-      Version: 10
-      UUID: HHdnzvFrRpy1qIuLZuNO-w
-      Is Internal: false
-      Authorized Operations: -2147483648
-
-   Topic Partitions:
-
-   | PARTITION ID | LEADER | REPLICAS | IN-SYNC REPLICAS (ISR) |
-   |--------------|--------|----------|------------------------|
-   | 0            | 1      | [1 2]    | [1 2]                  |
-   | 1            | 2      | [2 3]    | [2]                    |
-   | 2            | 3      | [3 1]    | [3 1]                  |
-
-   Topic Configurations:
-
-   | CONFIG NAME                             | VALUE               |
-   |-----------------------------------------|---------------------|
-   | compression.type                        | producer            |
-   | remote.log.delete.on.disable            | false               |
-   | leader.replication.throttled.replicas   |                     |
-   | remote.storage.enable                   | false               |
-   | message.downconversion.enable           | true                |
-   | min.insync.replicas                     | 1                   |
-   | segment.jitter.ms                       | 0                   |
-   | remote.log.copy.disable                 | false               |
-   | local.retention.ms                      | -2                  |
-   | cleanup.policy                          | delete              |
-   | flush.ms                                | 9223372036854775807 |
-   ......
-
-   ```
-9. Delete a topic:
-   ```bash
-   $ ok topics delete
-   Enter topic name to delete: my-new-topic
-   Successfully deleted topic 'my-new-topic'
-   ```
-   
-9. Start REST server:
-   ```bash
-   $ ok server start -p 8081 --brokers kafka:9093
-   ```
-
-10. Update a topic:
-    ```bash
-    $ ok topics update -n my-new-topic -p 4
-    Successfully updated topic 'my-new-topic' to 4 partitions.
-    ```
-
-11. End session and exit:
-    ```bash
-    $ ok logout
-    Logged out successfully!
-    ```
-
+- OpenAPI contract between API and frontend SPA
+- Implement schema registry support
+- Implement ACL support
+- Ensure 1:1 correspondence in functionality between CLI and API
+- Kafka Connect 
+- mBeans metrics collection and visualization
+- Complete dockerization

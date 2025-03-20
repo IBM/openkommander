@@ -1,0 +1,24 @@
+{
+    "name": "ecommerce-kafka",
+    "version": "1.0.0",
+    "description": "E-commerce simulation with Kafka",
+    "main": "index.js",
+    "scripts": {
+      "start:order": "node services/order-service/index.js",
+      "start:inventory": "node services/inventory-service/index.js",
+      "start:payment": "node services/payment-service/index.js",
+      "start:shipping": "node services/shipping-service/index.js",
+      "start:notification": "node services/notification-service/index.js",
+      "start:analytics": "node services/analytics-service/index.js",
+      "start:all": "concurrently \"npm run start:order\" \"npm run start:inventory\" \"npm run start:payment\" \"npm run start:shipping\" \"npm run start:notification\" \"npm run start:analytics\""
+    },
+    "dependencies": {
+      "@faker-js/faker": "^8.0.2",
+      "concurrently": "^8.2.0",
+      "dotenv": "^16.3.1",
+      "kafkajs": "^2.2.4",
+      "uuid": "^9.0.0",
+      "winston": "^3.10.0"
+    }
+  }
+  

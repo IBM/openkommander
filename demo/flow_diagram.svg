@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" xmlns:bx="https://boxy-svg.com" width="1000px"
+    height="600px">
+    <rect width="1000" height="600" fill="#f8f9fa" style="pointer-events: none;" /><text
+        style="font-family: &quot;IBM Plex Sans&quot;; font-size: 24px; font-weight: 700; text-anchor: middle; white-space: pre;">
+        <tspan x="500" y="40">A Kafka-powered, Event-Driven Architecture </tspan>
+        <tspan x="500" dy="1.2em">​</tspan>
+        <tspan>for an E-Commerce Platform</tspan>
+    </text>
+    <g style="">
+        <title>Kafka-Cluster</title>
+        <rect x="380" y="240" width="240" height="120" rx="10" ry="10" fill="#231f20" stroke="#000000"
+            stroke-width="2" /><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 20px; text-anchor: middle; white-space: pre;"
+            x="499.139" y="264.591">Kafka Cluster</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 14px; text-anchor: middle; white-space: pre;"
+            x="500.376" y="290.543">Topics</text>
+        <line x1="381.275" y1="274.914" x2="621.275" y2="274.914" stroke="white" stroke-width="1"
+            stroke-dasharray="5,3" /><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="396.533" y="310.884">order-created</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="412.956" y="323.635">payment-processed</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="405.442" y="338.058">inventory-updated</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="467.87" y="311.336">order-validated</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="496.106" y="337.292">shipping-prepared</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="460.503" y="351.795">notification-sent</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="515.188" y="323.083">order-completed</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="542.787" y="310.805">order-failed</text>
+    </g>
+    <g style="">
+        <title>Inventory Service</title>
+        <rect x="100" y="420" width="160" height="80" rx="5" ry="5" fill="#fbbc05" stroke="#f09819" stroke-width="2" />
+        <text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 16px; text-anchor: middle; white-space: pre;"
+            x="180" y="465">Inventory Service</text><text
+            style="fill: rgb(251, 188, 5); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="233.005" y="390.751">Consumes</text><text
+            style="fill: rgb(251, 188, 5); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="203.73" y="404.757">payment-processed</text><text
+            style="fill: rgb(251, 188, 5); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="309.64" y="443.365">Publishes</text><text
+            style="fill: rgb(251, 188, 5); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="309.64" y="458.365">inventory-updated</text>
+        <path d="M 380.041 320.285 C 320.041 320.285 317.309 412.15 260.934 444.676" fill="none" stroke-width="2"
+            marker-end="url(#arrowhead)" style="stroke: rgb(255, 190, 0);" />
+        <path d="M 256.75 461.148 C 316.75 461.148 320 360 380 330" fill="none" stroke="#fbbc05" stroke-width="2"
+            marker-end="url(#arrowhead)" />
+    </g>
+    <g>
+        <title>Notification Service</title>
+        <rect x="740" y="260" width="160" height="80" rx="5" ry="5" fill="#673ab7" stroke="#512da8" stroke-width="2" />
+        <path d="M620,300 C680,300 680,300 740,300" fill="none" stroke="#673ab7" stroke-width="2"
+            marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(103, 58, 183); font-family: &quot;IBM Plex Sans&quot;; font-size: 7.6px; white-space: pre;"
+            x="667.411" y="285.841">Consumes multiple</text><text
+            style="fill: rgb(103, 58, 183); font-family: &quot;IBM Plex Sans&quot;; font-size: 6.3px; white-space: pre;"
+            x="667.411" y="295.371">events</text>
+        <path d="M 740 320 C 680 320 678.732 315.52 619.995 314.529" fill="none" stroke="#673ab7" stroke-width="2"
+            marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(103, 58, 183); font-family: &quot;IBM Plex Sans&quot;; font-size: 8.8px; white-space: pre;"
+            x="680" y="332.107">Publishes</text><text
+            style="fill: rgb(103, 58, 183); font-family: &quot;IBM Plex Sans&quot;; font-size: 7.4px; white-space: pre;"
+            x="680" y="343.159">notification-sent</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 16px; text-anchor: middle; white-space: pre;"
+            x="820" y="305">Notification Service</text>
+    </g>
+    <g style="">
+        <title>Analytics Service</title>
+        <rect x="740" y="420" width="160" height="80" rx="5" ry="5" fill="#ff6d00" stroke="#e65100" stroke-width="2" />
+        <text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 16px; text-anchor: middle; white-space: pre;"
+            x="820" y="465">Analytics Service</text><text
+            style="fill: rgb(255, 109, 0); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="716.722" y="406.424">Consumes all events</text>
+        <path d="M 620 330 C 659.212 348.143 680.773 424.509 738.065 449.307" fill="none" stroke="#ff6d00"
+            stroke-width="2" marker-end="url(#arrowhead)" style="" />
+    </g>
+    <g style="">
+        <title>Order Service</title>
+        <rect x="100" y="100" width="160" height="80" rx="5" ry="5" fill="#4285f4" stroke="#2a56c6" stroke-width="2" />
+        <text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 16px; text-anchor: middle; white-space: pre;"
+            x="180" y="145">Order Service</text>
+        <path d="M 260 140 C 320 140 356.675 192.56 397.247 237.685" fill="none" stroke="#4285f4" stroke-width="2"
+            marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(66, 133, 244); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="286.95" y="191.489">Publishes</text><text
+            style="fill: rgb(66, 133, 244); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="286.95" y="206.489">order-created</text>
+        <path d="M 412.923 237.078 C 365.576 166.171 319.018 129.768 261.072 119.089" fill="none" stroke="#4285f4"
+            stroke-width="2" marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(66, 133, 244); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="372.303" y="128.33">Consumes results</text><text
+            style="fill: rgb(66, 133, 244); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="372.303" y="143.33">(payment, inventory, shipping)</text>
+    </g>
+    <g style="">
+        <title>Payment Service</title>
+        <rect x="100" y="260" width="160" height="80" rx="5" ry="5" fill="#ea4335" stroke="#c41e3a" stroke-width="2" />
+        <text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 16px; text-anchor: middle; white-space: pre;"
+            x="180" y="305">Payment Service</text>
+        <path d="M 379.756 279.864 C 318.198 289.882 319.001 284.715 259.756 299.864" fill="none" stroke="#ea4335"
+            stroke-width="2" marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(234, 67, 53); font-family: &quot;IBM Plex Sans&quot;; font-size: 8.6px; white-space: pre;"
+            x="302.186" y="266.091">Consumes</text><text
+            style="fill: rgb(234, 67, 53); font-family: &quot;IBM Plex Sans&quot;; font-size: 7.2px; white-space: pre;"
+            x="302.441" y="275.174">order-created</text>
+        <path d="M 258.153 321.749 C 318.329 314.796 320.032 307.758 379.433 301.348" fill="none" stroke="#ea4335"
+            stroke-width="2" marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(234, 67, 53); font-family: &quot;IBM Plex Sans&quot;; font-size: 8.6px; white-space: pre; transform-box: fill-box; transform-origin: 18.6415px 4.77339px;"
+            x="279.948" y="332.074">Publishes</text><text
+            style="fill: rgb(234, 67, 53); font-family: &quot;IBM Plex Sans&quot;; font-size: 7.2px; white-space: pre;"
+            x="268.107" y="340.686">payment-processed</text>
+    </g>
+    <g style="">
+        <title>Shipping Service</title>
+        <rect x="740" y="100" width="160" height="80" rx="5" ry="5" fill="#34a853" stroke="#2e7d32" stroke-width="2" />
+        <path d="M 620.92 269.941 C 666.508 257.196 694.087 170.971 740.92 139.941" fill="none" stroke="#34a853"
+            stroke-width="2" marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(52, 168, 83); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="619.401" y="171.227">Consumes</text><text
+            style="fill: rgb(52, 168, 83); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="600.656" y="187.307">inventory-updated</text>
+        <path d="M 740 160 C 707.591 184.822 679.171 279.516 620 290" fill="none" stroke="#34a853" stroke-width="2"
+            marker-end="url(#arrowhead)" /><text
+            style="fill: rgb(52, 168, 83); font-family: &quot;IBM Plex Sans&quot;; font-size: 12px; white-space: pre;"
+            x="706.976" y="224.753">Publishes</text><text
+            style="fill: rgb(52, 168, 83); font-family: &quot;IBM Plex Sans&quot;; font-size: 10px; white-space: pre;"
+            x="706.976" y="239.753">shipping-prepared</text><text
+            style="fill: rgb(255, 255, 255); font-family: &quot;IBM Plex Sans&quot;; font-size: 16px; text-anchor: middle; white-space: pre;"
+            x="820" y="145">Shipping Service</text>
+    </g>
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" />
+        </marker>
+        <style bx:fonts="IBM Plex Sans">
+            @import url(https://fonts.googleapis.com/css2?family=IBM+Plex+Sans%3Aital%2Cwght%400%2C100%3B0%2C200%3B0%2C300%3B0%2C400%3B0%2C500%3B0%2C600%3B0%2C700%3B1%2C100%3B1%2C200%3B1%2C300%3B1%2C400%3B1%2C500%3B1%2C600%3B1%2C700&amp;display=swap);
+        </style>
+        <bx:export>
+            <bx:file format="svg" />
+            <bx:file format="svg" path="Untitled 2.svg" />
+        </bx:export>
+    </defs>
+</svg>

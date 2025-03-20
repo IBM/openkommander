@@ -1,30 +1,4 @@
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-
-*.out
-
-# vendor/
-
-go.work
-
-# go.sum
-
-.idea/
-.vscode/
-*.swp
-
-*.log
-
-*.tmp
-*.temp
-
+node_modules/
 bin/
-obj/
-
-.openkommander*
-
-.DS_Store
+dist/
+go.sum
