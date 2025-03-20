@@ -229,7 +229,7 @@ curl -X GET http://localhost:8081/api/v1/brokers
    
 9. Start REST server:
    ```bash
-   $ ok server start --brokers kafka:9093
+   $ ok server start -p 8081 --brokers kafka:9093
    ```
 
 10. Update a topic:

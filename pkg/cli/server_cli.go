@@ -39,7 +39,6 @@ func (ServerCommandList) GetSubcommands() []CommandList {
 func startRESTServer(cmd *cobra.Command, args []string) {
 	port, _ := cmd.Flags().GetString("port")
 	brokerslist, _ := cmd.Flags().GetString("brokers")
-
 	brokers := strings.Split(brokerslist, ",")
 
 	if port == "" {
