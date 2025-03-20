@@ -52,6 +52,7 @@ func (RootCommandList) GetSubcommands() []CommandList {
 	return []CommandList{
 		&TopicCommandList{},
 		&ServerCommandList{},
+		&BrokerCommandList{},
 	}
 }
 
