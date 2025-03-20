@@ -79,7 +79,7 @@ func StartRESTServer(port string, brokers []string) {
 	// Set up shutdown handler
 	go func() {
 		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt) 
 		<-sigCh
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -151,7 +151,17 @@ func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
-	topics, err := s.kafkaClient.Topics()
+	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
+
+	if err != nil {
+		sendError(w, "Failed to create admin client", err)
+		return
+	}
+
+	// defer admin.Close()
+
+	topics, err := admin.ListTopics()
+
 	if err != nil {
 		sendError(w, "Failed to list topics", err)
 		return
@@ -171,7 +181,7 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	defer admin.Close()
+	// defer admin.Close()
 
 	err = admin.CreateTopic(req.Name, &sarama.TopicDetail{
 		NumPartitions:     req.Partitions,
@@ -186,9 +196,15 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
-	topicName := r.URL.Query().Get("name")
+	var req TopicRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, "Invalid request body", err)
+		return
+	}
+	
+	topicName := req.Name
 	if topicName == "" {
-		http.Error(w, "Topic name is required", http.StatusBadRequest)
+		sendError(w, "Topic name is required", nil)
 		return
 	}
 
@@ -197,7 +213,7 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	defer admin.Close()
+	// defer admin.Close()
 
 	err = admin.DeleteTopic(topicName)
 	if err != nil {
