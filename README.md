@@ -82,8 +82,10 @@ All commands start with prefix `ok`
 | `logout` | End the current session | None |
 | `session` | Display current session information | None |
 | `metadata` | Display cluster information | None |
-| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe` |
-| `help` | Display available commands | None |
+| `server` | Display rest server information | Subcommands: `start` |
+| `topics` | Topic management commands | Subcommands: `create`, `list`, `delete`, `describe`, `update` |
+| `help` | Display available commands | None | 
+
 
 ### Topics Management
 
@@ -101,6 +103,30 @@ OpenKommander provides a set of commands to manage Kafka topics:
 | `/topics` | GET | List all topics | None | JSON object with topic details |
 | `/topics` | POST | Create a new topic | JSON with name, partitions, and replication_factor | Success message |
 | `/topics/{topicName}` | DELETE | Delete a topic | None | Success message |
+
+
+
+### Rest Endpoints
+
+#### List topics
+curl -X GET http://localhost:8081/api/v1/topics
+
+#### Create a topic
+curl -X POST http://localhost:8081/api/v1/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-topic","partitions":2,"replication_factor":1}'
+
+#### Delete a topic
+curl -X DELETE http://localhost:8081/api/v1/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-topic"}'
+
+#### Broker status
+curl -X GET http://localhost:8081/api/v1/status
+
+#### Broker management
+curl -X GET http://localhost:8081/api/v1/brokers
+
 
 ### Example Workflow
 
@@ -200,6 +226,11 @@ OpenKommander provides a set of commands to manage Kafka topics:
    Enter topic name to delete: my-new-topic
    Successfully deleted topic 'my-new-topic'
    ```
+   
+9. Start REST server:
+   ```bash
+   $ ok server start -p 8081 --brokers kafka:9093
+   ```
 
 10. Update a topic:
     ```bash
@@ -212,3 +243,4 @@ OpenKommander provides a set of commands to manage Kafka topics:
     $ ok logout
     Logged out successfully!
     ```
+
