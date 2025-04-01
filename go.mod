@@ -1,13 +1,12 @@
 module github.com/IBM/openkommander
 
 go 1.23.0
-
 require (
 	github.com/IBM/sarama v1.45.1
 	github.com/gorilla/mux v1.8.1
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/spf13/cobra v1.9.1
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 )
 
 require (
