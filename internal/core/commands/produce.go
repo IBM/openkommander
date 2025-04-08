@@ -46,7 +46,7 @@ func ProduceMessage(topicName, key, msg string, partition, acks int) (successMes
 
 	part, offset, err := producer.SendMessage(message)
 	if err != nil {
-		return "", NewFailure("Failed to produce message: %s", http.StatusBadRequest)
+		return "", NewFailure(fmt.Sprintf("Failed to produce message: %s", err), http.StatusBadRequest)
 	}
 
 	return fmt.Sprintf("successfully written to partition %d with offset %d", part, offset), nil
