@@ -38,6 +38,7 @@ body:
           value: ui
         - label: Other
           value: other
+    validations:
       required: true
   - type: checkboxes
     id: terms
