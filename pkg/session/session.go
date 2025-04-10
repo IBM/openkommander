@@ -100,6 +100,10 @@ func (s *session) GetAdminClient() (sarama.ClusterAdmin, error) {
 	return adminClient, nil
 }
 
+func (s *session) GetBrokers() []string {
+	return s.brokers
+}
+
 func GetCurrentSession() *session {
 	return currentSession
 }

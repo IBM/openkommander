@@ -14,6 +14,7 @@ type OkFlag struct {
 	ShortName string // Optional
 	ValueType OkFlagType
 	Usage     string
+	Default   []any
 }
 
 type OkFlagType string
@@ -23,12 +24,13 @@ const (
 	OkFlagInt    OkFlagType = "int"
 )
 
-func NewOkFlag(flagType OkFlagType, name, shortName, usage string) OkFlag {
+func NewOkFlag(flagType OkFlagType, name, shortName, usage string, defaultVal ...any) OkFlag {
 	return OkFlag{
 		Name:      name,
 		ShortName: shortName,
 		ValueType: flagType,
 		Usage:     usage,
+		Default:   defaultVal,
 	}
 }
 
@@ -92,9 +94,17 @@ func cobraCmdFromOkCmd(command *OkCmd) cobraCmd {
 		for _, flag := range command.Flags {
 			switch flag.ValueType {
 			case "string":
-				cmd.Flags().StringP(flag.Name, flag.ShortName, "", flag.Usage)
+				defaultVal := ""
+				if len(flag.Default) > 0 {
+					defaultVal = flag.Default[0].(string)
+				}
+				cmd.Flags().StringP(flag.Name, flag.ShortName, defaultVal, flag.Usage)
 			case "int":
-				cmd.Flags().IntP(flag.Name, flag.ShortName, 0, flag.Usage)
+				defaultVal := 0
+				if len(flag.Default) > 0 {
+					defaultVal = flag.Default[0].(int)
+				}
+				cmd.Flags().IntP(flag.Name, flag.ShortName, defaultVal, flag.Usage)
 			}
 		}
 	}
