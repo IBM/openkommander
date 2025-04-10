@@ -77,12 +77,19 @@ func getClusterMetadata(cmd cobraCmd, args cobraArgs) {
 	}
 
 	brokers := client.Brokers()
-	fmt.Println("Cluster Brokers:")
+
+	brokerHeaders := []string{"ID", "Address", "Connected"}
+	brokerRows := [][]interface{}{}
 	for _, b := range brokers {
+		connected := "No"
 		if err := b.Open(client.Config()); err == nil || err == sarama.ErrAlreadyConnected {
-			fmt.Printf(" - %s (ID: %d)\n", b.Addr(), b.ID())
-		} else {
-			fmt.Printf(" - %s (ID: %d) - error connecting: %v\n", b.Addr(), b.ID(), err)
+			connected = "Yes"
 		}
+		brokerRows = append(brokerRows, []interface{}{
+			b.ID(),
+			b.Addr(),
+			connected,
+		})
 	}
+	RenderTable("Cluster Brokers:", brokerHeaders, brokerRows)
 }
