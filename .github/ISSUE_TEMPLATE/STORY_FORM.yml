@@ -26,6 +26,19 @@ body:
       placeholder: Description
     validations:
       required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component does this feature request relate to?
+      options:
+        - label: CLI
+          value: cli
+        - label: UI
+          value: ui
+        - label: Other
+          value: other
+      required: true
   - type: checkboxes
     id: terms
     attributes:
