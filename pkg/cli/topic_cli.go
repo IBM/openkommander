@@ -21,18 +21,18 @@ func (TopicCommandList) GetParentCommand() *OkParentCmd {
 func (m TopicCommandList) GetCommands() []*OkCmd {
 	return []*OkCmd{
 		{ // Create topic
-			Use:   "create",
+			Use:   "create [TOPIC NAME]",
 			Short: "Create a new topic",
 			Run:   createTopic,
 			Flags: []OkFlag{
-				NewOkFlag(OkFlagString, "name", "n", "Specify the name of the new topic"),
 				NewOkFlag(OkFlagInt, "partitions", "p", "Specify the number of partitions of the new topic"),
 				NewOkFlag(OkFlagInt, "replication-factor", "r", "Specify the replication factor of the new topic"),
 			},
-			RequiredFlags: []string{"name", "partitions", "replication-factor"},
+			RequiredFlags: []string{"partitions", "replication-factor"},
+			Args:          cobra.ExactArgs(1),
 		},
 		{ // Delete topic
-			Use:   "delete [NAME]",
+			Use:   "delete [TOPIC NAME]",
 			Short: "Delete a topic",
 			Run:   deleteTopic,
 			Args:  cobra.ExactArgs(1),
@@ -43,20 +43,20 @@ func (m TopicCommandList) GetCommands() []*OkCmd {
 			Run:   listTopics,
 		},
 		{ // Describe topic
-			Use:   "describe [NAME]",
+			Use:   "describe [TOPIC NAME]",
 			Short: "Describe a topic",
 			Run:   describeTopic,
 			Args:  cobra.ExactArgs(1),
 		},
 		{ // Update topic
-			Use:   "update",
+			Use:   "update [TOPIC NAME]",
 			Short: "Update an existing topic to create new partitions",
 			Run:   updateTopic,
 			Flags: []OkFlag{
-				NewOkFlag(OkFlagString, "name", "n", "Specify the name of the topic"),
 				NewOkFlag(OkFlagInt, "new-partitions", "p", "Specify the new partition count for the topic"),
 			},
-			RequiredFlags: []string{"name", "new-partitions"},
+			RequiredFlags: []string{"new-partitions"},
+			Args:          cobra.ExactArgs(1),
 		},
 	}
 }
@@ -68,7 +68,13 @@ func (TopicCommandList) GetSubcommands() []CommandList {
 // Create topic
 
 func createTopic(cmd cobraCmd, args cobraArgs) {
-	name, _ := cmd.Flags().GetString("name")
+	name := cmd.Flags().Arg(0)
+
+	if name == "" {
+		fmt.Println("Error: Topic name is required.")
+		return
+	}
+
 	numPartitions, _ := cmd.Flags().GetInt("partitions")
 	replicationFactor, _ := cmd.Flags().GetInt("replication-factor")
 
@@ -85,6 +91,11 @@ func createTopic(cmd cobraCmd, args cobraArgs) {
 
 func deleteTopic(cmd cobraCmd, args cobraArgs) {
 	name := cmd.Flags().Arg(0)
+
+	if name == "" {
+		fmt.Println("Error: Topic name is required.")
+		return
+	}
 
 	successMessage, failure := commands.DeleteTopic(name)
 	if failure != nil {
@@ -116,7 +127,12 @@ func listTopics(cmd cobraCmd, args cobraArgs) {
 
 // Describe a topic
 func describeTopic(cmd cobraCmd, args cobraArgs) {
-	topicName := args[0]
+	topicName := cmd.Flags().Arg(0)
+
+	if topicName == "" {
+		fmt.Println("Error: Topic name is required.")
+		return
+	}
 
 	metadata, failure := commands.DescribeTopic(topicName)
 	if failure != nil {
@@ -173,8 +189,13 @@ func describeTopic(cmd cobraCmd, args cobraArgs) {
 
 // Update topic
 func updateTopic(cmd cobraCmd, args cobraArgs) {
-	topicName, _ := cmd.Flags().GetString("name")
+	topicName := cmd.Flags().Arg(0)
 	newPartitions, _ := cmd.Flags().GetInt("new-partitions")
+
+	if topicName == "" {
+		fmt.Println("Error: Topic name is required.")
+		return
+	}
 
 	if newPartitions <= 0 {
 		fmt.Println("Error: Invalid partition count.")
