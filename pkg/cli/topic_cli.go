@@ -76,7 +76,7 @@ func createTopic(cmd cobraCmd, args cobraArgs) {
 	numPartitions, _ := cmd.Flags().GetInt("partitions")
 	replicationFactor, _ := cmd.Flags().GetInt("replication-factor")
 
-	if numPartitions == 0 {
+	if numPartitions <= 0 {
 		fmt.Print("Enter number of partitions: ")
 		if _, err := fmt.Scanln(&numPartitions); err != nil {
 			fmt.Println("Error reading number of partitions:", err)
@@ -89,7 +89,7 @@ func createTopic(cmd cobraCmd, args cobraArgs) {
 		return
 	}
 
-	if replicationFactor == 0 {
+	if replicationFactor <= 0 {
 		fmt.Print("Enter replication factor: ")
 		if _, err := fmt.Scanln(&replicationFactor); err != nil {
 			fmt.Println("Error reading replication factor:", err)
