@@ -29,6 +29,7 @@ type session struct {
 	client          sarama.Client
 	adminClient     sarama.ClusterAdmin
 	isAuthenticated bool
+	localVersion    sarama.KafkaVersion
 }
 
 type SessionData struct {
@@ -198,6 +199,22 @@ func Login() {
 		return
 	}
 
+	versionReader := bufio.NewReader(os.Stdin)
+	defaultVersion := viper.GetString("kafka.version")
+	if defaultVersion != "" {
+		fmt.Printf("Enter kafka version [%s]: ", defaultVersion)
+	} else {
+		fmt.Print("Enter kafka version: ")
+	}
+
+	version, _ := versionReader.ReadString('\n')
+	version = strings.TrimSpace(version)
+	if version == "" {
+		version = defaultVersion
+	}
+	currentSession.localVersion, _ = sarama.ParseKafkaVersion(version)
+	viper.Set("kafka.version", version)
+
 	reader := bufio.NewReader(os.Stdin)
 
 	defaultBroker := viper.GetString("kafka.broker")
@@ -218,8 +235,16 @@ func Login() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := currentSession.Connect(ctx)
+
+	configErr := viper.WriteConfig()
+	if configErr != nil {
+		fmt.Println("Error saving configuration to file:", err)
+		return
+	}
+
 	if client != nil && err == nil {
 		fmt.Println("Logged in successfully!")
+		fmt.Printf("Kafka Version [%s]\n", viper.GetString("kafka.version"))
 		err = saveSession()
 		if err != nil {
 			fmt.Println("Error saving session:", err)

@@ -3,8 +3,8 @@ package cluster
 import (
 	"context"
 	"fmt"
-
 	"github.com/IBM/sarama"
+	"github.com/spf13/viper"
 )
 
 type Cluster struct {
@@ -14,7 +14,8 @@ type Cluster struct {
 
 func NewCluster(brokers []string) *Cluster {
 	config := sarama.NewConfig()
-	config.Version = sarama.V3_9_0_0
+	defaultVersion := viper.GetString("kafka.version")
+	config.Version, _ = sarama.ParseKafkaVersion(defaultVersion)
 	return &Cluster{
 		Brokers: brokers,
 		Config:  config,
