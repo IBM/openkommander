@@ -12,7 +12,6 @@ import (
 	"github.com/IBM/openkommander/pkg/cluster"
 	"github.com/IBM/openkommander/pkg/constants"
 	"github.com/IBM/sarama"
-	"github.com/spf13/viper"
 )
 
 type Session interface {
@@ -29,26 +28,28 @@ type session struct {
 	client          sarama.Client
 	adminClient     sarama.ClusterAdmin
 	isAuthenticated bool
+	version         sarama.KafkaVersion
 }
 
 type SessionData struct {
 	Brokers         []string `json:"brokers"`
 	IsAuthenticated bool     `json:"isAuthenticated"`
+	Version         string   `json:"version"`
 }
 
 func (s *session) Info() string {
-	return fmt.Sprintf("Brokers: %v, Authenticated: %v", s.brokers, s.isAuthenticated)
+	return fmt.Sprintf("Brokers: %v, Authenticated: %v, Version: %v", s.brokers, s.isAuthenticated, s.version)
 }
 
 func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
-	client, err := cluster.NewCluster(s.brokers).Connect(ctx)
+	client, err := cluster.NewCluster(s.brokers, s.version).Connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster: %w", err)
 	}
-	adminClient, err := cluster.NewCluster(s.brokers).ConnectAdmin(ctx)
+	adminClient, err := cluster.NewCluster(s.brokers, s.version).ConnectAdmin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster as admin: %w", err)
 	}
@@ -65,6 +66,7 @@ func (s *session) Disconnect() {
 	s.client = nil
 	s.adminClient = nil
 	s.isAuthenticated = false
+	s.version = constants.SaramaKafkaVersion
 	fmt.Println("Logged out successfully!")
 }
 
@@ -92,7 +94,7 @@ func (s *session) GetAdminClient() (sarama.ClusterAdmin, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	adminClient, err := cluster.NewCluster(s.brokers).ConnectAdmin(ctx)
+	adminClient, err := cluster.NewCluster(s.brokers, s.version).ConnectAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +120,7 @@ func createDefaultSession() error {
 	}
 	defer file.Close()
 
-	sessionData := SessionData{Brokers: []string{}, IsAuthenticated: false}
+	sessionData := SessionData{Brokers: []string{}, IsAuthenticated: false, Version: constants.SaramaKafkaVersion.String()}
 	return json.NewEncoder(file).Encode(sessionData)
 }
 
@@ -130,7 +132,7 @@ func saveSession() error {
 	}
 	defer file.Close()
 
-	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated}
+	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated, Version: currentSession.version.String()}
 	err = json.NewEncoder(file).Encode(sessionData)
 	if err != nil {
 		fmt.Println("Error encoding session data:", err)
@@ -166,27 +168,20 @@ func loadSession() error {
 
 	currentSession.brokers = data.Brokers
 	currentSession.isAuthenticated = data.IsAuthenticated
+	currentSession.version, _ = sarama.ParseKafkaVersion(data.Version)
 	return nil
 }
 
 func init() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("./config")
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Println("Error reading config file:", err)
-	}
-
 	currentSession = &session{
 		brokers:         []string{},
 		isAuthenticated: false,
 		client:          nil,
 		adminClient:     nil,
+		version:         constants.SaramaKafkaVersion,
 	}
 
-	err = loadSession()
+	err := loadSession()
 	if err != nil {
 		fmt.Println("Error loading session:", err)
 	}
@@ -198,19 +193,24 @@ func Login() {
 		return
 	}
 
+	versionReader := bufio.NewReader(os.Stdin)
+	fmt.Printf("Enter kafka version [%s]: ", constants.KafkaVersion)
+
+	version, _ := versionReader.ReadString('\n')
+	version = strings.TrimSpace(version)
+	if version == "" {
+		version = constants.KafkaVersion
+	}
+	currentSession.version, _ = sarama.ParseKafkaVersion(version)
+
 	reader := bufio.NewReader(os.Stdin)
 
-	defaultBroker := viper.GetString("kafka.broker")
-	if defaultBroker != "" {
-		fmt.Printf("Enter broker address [%s]: ", defaultBroker)
-	} else {
-		fmt.Print("Enter broker address: ")
-	}
+	fmt.Printf("Enter broker address [%s]: ", constants.KafkaBroker)
 
 	broker, _ := reader.ReadString('\n')
 	broker = strings.TrimSpace(broker)
 	if broker == "" {
-		broker = defaultBroker
+		broker = constants.KafkaBroker
 	}
 
 	currentSession.brokers = []string{broker}
@@ -218,8 +218,10 @@ func Login() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := currentSession.Connect(ctx)
+
 	if client != nil && err == nil {
 		fmt.Println("Logged in successfully!")
+		fmt.Printf("Kafka Version [%s]\n", currentSession.version)
 		err = saveSession()
 		if err != nil {
 			fmt.Println("Error saving session:", err)

@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"fmt"
-
 	"github.com/IBM/sarama"
 )
 
@@ -12,9 +11,9 @@ type Cluster struct {
 	Config  *sarama.Config
 }
 
-func NewCluster(brokers []string) *Cluster {
+func NewCluster(brokers []string, version sarama.KafkaVersion) *Cluster {
 	config := sarama.NewConfig()
-	config.Version = sarama.V3_9_0_0
+	config.Version = version
 	return &Cluster{
 		Brokers: brokers,
 		Config:  config,
