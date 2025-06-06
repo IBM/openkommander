@@ -1,5 +1,0 @@
-kafka:
-    broker: kafka:9093
-    version: 3.9.0
-openkommander:
-    session_filename: .openkommander_config

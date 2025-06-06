@@ -1,26 +1,16 @@
 package constants
 
 import (
-	"fmt"
-
-	"github.com/spf13/viper"
+	"github.com/IBM/sarama"
 )
 
 var (
-	OpenKommanderConfigFilename = ".openkommander_config"
+	OpenKommanderConfigFilename                     = ".openkommander_config"
+	KafkaVersion                                    = "3.9.0"
+	SaramaKafkaVersion          sarama.KafkaVersion = sarama.V3_9_0_0
+	KafkaBroker                                     = "kafka:9093"
 )
 
 func init() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("config")
 
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("Error reading config file: %v", err)
-		return
-	}
-
-	if sessionFilename := viper.GetString("openkommander.session_filename"); sessionFilename != "" {
-		OpenKommanderConfigFilename = sessionFilename
-	}
 }
