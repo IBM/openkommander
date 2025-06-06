@@ -115,10 +115,14 @@ func GetCurrentSession() *session {
 var currentSession *session
 
 func createDefaultSession() error {
-	file, err := os.Create(constants.OpenKommanderConfigFilename)
+	err := os.MkdirAll(constants.OpenKommanderFolder, 0755)
 	if err != nil {
-		fmt.Println("Error creating session file:", err)
-		return err
+		return fmt.Errorf("error creating directory %s: %w", constants.OpenKommanderFolder, err)
+	}
+
+	file, err := os.OpenFile(constants.OpenKommanderConfigFilename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("error creating session file %s: %w", constants.OpenKommanderConfigFilename, err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
@@ -131,10 +135,14 @@ func createDefaultSession() error {
 }
 
 func saveSession() error {
-	file, err := os.Create(constants.OpenKommanderConfigFilename)
+	err := os.MkdirAll(constants.OpenKommanderFolder, 0755)
 	if err != nil {
-		fmt.Println("Error creating session file:", err)
-		return err
+		return fmt.Errorf("error creating directory %s: %w", constants.OpenKommanderFolder, err)
+	}
+
+	file, err := os.OpenFile(constants.OpenKommanderConfigFilename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("error creating session file %s: %w", constants.OpenKommanderConfigFilename, err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
@@ -145,8 +153,7 @@ func saveSession() error {
 	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated, Version: currentSession.version.String()}
 	err = json.NewEncoder(file).Encode(sessionData)
 	if err != nil {
-		fmt.Println("Error encoding session data:", err)
-		return err
+		return fmt.Errorf("error encoding session data: %w", err)
 	}
 	return nil
 }

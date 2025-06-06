@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/IBM/openkommander/pkg/rest"
 	"github.com/spf13/cobra"
@@ -25,9 +24,8 @@ func (ServerCommandList) GetCommands() []*OkCmd {
 			Run:   startRESTServer,
 			Flags: []OkFlag{
 				NewOkFlag(OkFlagString, "port", "p", "Specify the port for the REST server"),
-				NewOkFlag(OkFlagString, "brokers", "b", "Specify the Kafka brokers to connect to"),
 			},
-			RequiredFlags: []string{"port", "brokers"},
+			RequiredFlags: []string{"port"},
 		},
 	}
 }
@@ -38,18 +36,11 @@ func (ServerCommandList) GetSubcommands() []CommandList {
 
 func startRESTServer(cmd *cobra.Command, args []string) {
 	port, _ := cmd.Flags().GetString("port")
-	brokerslist, _ := cmd.Flags().GetString("brokers")
-	brokers := strings.Split(brokerslist, ",")
 
 	if port == "" {
 		fmt.Println("Error: Port is required")
 		return
 	}
-	
-	if len(brokers) == 0 {
-		fmt.Println("Error: At least one broker is required")
-		return
-	}
 
-	rest.StartRESTServer(port, brokers)
+	rest.StartRESTServer(port)
 }
