@@ -180,7 +180,16 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
-	createNewClient(w, r, s)
+	status, err := createNewClient(w, r, s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !status {
+		http.Error(w, "Failed to create Kafka client", http.StatusInternalServerError)
+		return
+	}
 
 	fmt.Println("Handling status request for broker " + mux.Vars(r)["broker"])
 
