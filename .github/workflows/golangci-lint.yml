@@ -10,7 +10,7 @@ on:
 
 env:
   GO_VERSION: 1.23
-  GOLANGCI_LINT_VERSION: v1.64
+  GOLANGCI_LINT_VERSION: v2.1.6
 
 jobs:
   detect-modules:
@@ -45,7 +45,7 @@ jobs:
           go build ./...
         working-directory: ${{ matrix.modules }}
       - name: golangci-lint ${{ matrix.modules }}
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           working-directory: ${{ matrix.modules }}

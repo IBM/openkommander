@@ -61,7 +61,9 @@ func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 
 func (s *session) Disconnect() {
 	if s.client != nil {
-		s.client.Close()
+		if err := s.client.Close(); err != nil {
+			fmt.Printf("Error closing client: %v\n", err)
+		}
 	}
 	s.client = nil
 	s.adminClient = nil
@@ -118,7 +120,11 @@ func createDefaultSession() error {
 		fmt.Println("Error creating session file:", err)
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}()
 
 	sessionData := SessionData{Brokers: []string{}, IsAuthenticated: false, Version: constants.SaramaKafkaVersion.String()}
 	return json.NewEncoder(file).Encode(sessionData)
@@ -130,7 +136,11 @@ func saveSession() error {
 		fmt.Println("Error creating session file:", err)
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}()
 
 	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated, Version: currentSession.version.String()}
 	err = json.NewEncoder(file).Encode(sessionData)
@@ -156,7 +166,11 @@ func loadSession() error {
 			return err
 		}
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}()
 
 	var data SessionData
 	decoder := json.NewDecoder(file)
