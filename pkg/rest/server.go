@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
 	"github.com/IBM/openkommander/pkg/constants"
+	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/sarama"
 	"github.com/gorilla/mux"
 )
@@ -34,13 +35,80 @@ type TopicRequest struct {
 	ReplicationFactor int16  `json:"replication_factor"`
 }
 
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		isAPIRequest := len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api"
+		requestType := "UI"
+		if isAPIRequest {
+			requestType = "API"
+		}
+		if isAPIRequest {
+			logger.HTTP("API request",
+				r.Method,
+				r.URL.Path,
+				0, // status not available yet
+				0, // duration not available yet
+				"url", r.URL.String(),
+				"remote_addr", r.RemoteAddr,
+				"user_agent", r.UserAgent(),
+				"content_length", r.ContentLength,
+				"host", r.Host,
+				"referer", r.Referer(),
+			)
+		} else {
+			logger.Debug("Incoming UI request",
+				"type", requestType,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"remote_addr", r.RemoteAddr,
+				"user_agent", r.UserAgent(),
+			)
+		}
+
+		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(wrapped, r)
+
+		duration := time.Since(start)
+		if isAPIRequest {
+			logger.HTTP("API request completed",
+				r.Method,
+				r.URL.Path,
+				wrapped.statusCode,
+				duration.Milliseconds(),
+				"remote_addr", r.RemoteAddr,
+			)
+		} else {
+			logger.Debug("UI request completed",
+				"type", requestType,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status_code", wrapped.statusCode,
+				"duration_ms", duration.Milliseconds(),
+			)
+		}
+	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 func NewServer(port string) (*Server, error) {
 	s := &Server{
 		kafkaClient: nil,
 		startTime:   time.Now(),
 	}
-
 	router := mux.NewRouter()
+	router.Use(LoggingMiddleware)
 	router.HandleFunc("/api/v1/{broker}/status", s.handleStatus)
 	router.HandleFunc("/api/v1/{broker}/topics", s.handleTopics)
 	router.HandleFunc("/api/v1/{broker}/brokers", s.handleBrokers)
@@ -72,7 +140,7 @@ func NewServer(port string) (*Server, error) {
 		}
 	})
 
-	log.Printf("Serving frontend from %s", frontendDir)
+	logger.Info("Serving frontend", "directory", frontendDir)
 
 	s.httpServer = &http.Server{
 		Addr:    ":" + port,
@@ -87,8 +155,18 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	if err := s.kafkaClient.Close(); err != nil {
-		return fmt.Errorf("failed to close Kafka client: %v", err)
+	if s.kafkaClient != nil {
+		brokers := s.kafkaClient.Brokers()
+		if len(brokers) > 0 {
+			if err := s.kafkaClient.Close(); err != nil {
+				logger.Warn("Failed to close Kafka client during server shutdown", "error", err)
+			} else {
+				logger.Info("Kafka client closed successfully")
+			}
+		} else {
+			logger.Info("Kafka client was already disconnected")
+		}
+		s.kafkaClient = nil
 	}
 	return s.httpServer.Shutdown(ctx)
 }
@@ -96,7 +174,8 @@ func (s *Server) Stop(ctx context.Context) error {
 func StartRESTServer(port string) {
 	s, err := NewServer(port)
 	if err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logger.Error("Failed to start server", "error", err)
+		os.Exit(1)
 	}
 
 	// Set up shutdown handler
@@ -107,15 +186,14 @@ func StartRESTServer(port string) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-
 		if err := s.Stop(ctx); err != nil {
-			log.Printf("Error during server shutdown: %v", err)
+			logger.Error("Error during server shutdown", "error", err)
 		}
 	}()
-
-	log.Printf("REST API server running on port %s...", port)
+	logger.Info("REST API server running on port", "port", port)
 	if err := s.Start(); err != http.ErrServerClosed {
-		log.Fatalf("Server error: %v", err)
+		logger.Error("Server error", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -123,49 +201,55 @@ func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status 
 	vars := mux.Vars(r)
 	broker := vars["broker"]
 
-	fmt.Println("Creating new Kafka client for broker:", broker)
+	logger.Kafka("Creating new Kafka client", broker, "connect", "client_addr", r.RemoteAddr)
 
 	if broker == "" {
-		http.Error(w, "Broker not specified", http.StatusBadRequest)
+		logger.Warn("Broker not specified in request", "url", r.URL.String())
+		sendError(w, "Broker not specified", nil)
 		return false, fmt.Errorf("broker not specified")
 	}
-
 	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	config.Version = constants.SaramaKafkaVersion
 	client, err := sarama.NewClient([]string{broker}, config)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to create Kafka client: %v", err), http.StatusInternalServerError)
+		logger.Error("Failed to create Kafka client", "broker", broker, "error", err)
+		sendError(w, "Failed to create Kafka client", err)
 		return false, fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 
 	s.kafkaClient = client
+	logger.Kafka("Successfully created Kafka client", broker, "connect")
 	return true, nil
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
 	status, err := createNewClient(w, r, s)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.Error("Failed to create Kafka client for status check", "broker", broker, "error", err)
+		sendError(w, "Failed to create Kafka client", nil)
 		return
 	}
-
 	if !status {
-		http.Error(w, "Failed to create Kafka client", http.StatusInternalServerError)
+		logger.Error("Client creation failed for status check", "broker", broker)
+		sendError(w, "Failed to create Kafka client", fmt.Errorf("client creation failed"))
 		return
 	}
-
-	fmt.Println("Handling status request for broker")
 
 	if s.kafkaClient == nil {
-		http.Error(w, "Kafka client not initialized", http.StatusInternalServerError)
+		sendError(w, "Kafka client not initialized", fmt.Errorf("kafka client is nil"))
 		return
 	}
-
 	brokers := s.kafkaClient.Brokers()
 	kafkaStatus := "disconnected"
 	if len(brokers) > 0 {
 		kafkaStatus = "connected"
 	}
+
+	uptime := time.Since(s.startTime).Seconds()
+	logger.Info("Status check completed", "broker", broker, "kafka_status", kafkaStatus, "brokers_count", len(brokers), "uptime_seconds", uptime)
 
 	response := Response{
 		Status:  "ok",
@@ -173,28 +257,31 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"kafka_status":   kafkaStatus,
 			"brokers_count":  len(brokers),
-			"uptime_seconds": time.Since(s.startTime).Seconds(),
+			"uptime_seconds": uptime,
 		},
 	}
 	sendJSON(w, http.StatusOK, response)
 }
 
 func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
 	status, err := createNewClient(w, r, s)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.Error("Failed to create Kafka client for topics operation", "broker", broker, "method", r.Method, "error", err)
+		sendError(w, "Failed to create Kafka client", err)
 		return
 	}
-
 	if !status {
-		http.Error(w, "Failed to create Kafka client", http.StatusInternalServerError)
+		logger.Error("Client creation failed for topics operation", "broker", broker, "method", r.Method)
+		sendError(w, "Failed to create Kafka client", fmt.Errorf("client creation failed"))
 		return
 	}
-
-	fmt.Println("Handling status request for broker " + mux.Vars(r)["broker"])
 
 	if s.kafkaClient == nil {
-		http.Error(w, "Kafka client not initialized", http.StatusInternalServerError)
+		logger.Error("Kafka client not initialized for topics operation", "broker", broker)
+		sendError(w, "Kafka client not initialized", fmt.Errorf("kafka client is nil"))
 		return
 	}
 
@@ -206,22 +293,26 @@ func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		s.deleteTopic(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		sendError(w, "Method not allowed", fmt.Errorf("method %s not allowed", r.Method))
 	}
 }
 
 func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
 	switch r.Method {
 	case http.MethodPost:
 		s.createBroker(w, r)
 	case http.MethodGet:
 		s.getBrokers(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		logger.Warn("Method not allowed for brokers endpoint", "method", r.Method, "broker", broker)
+		sendError(w, "Method not allowed", fmt.Errorf("method %s not allowed", r.Method))
 	}
 }
 
 func (s *Server) createBroker(w http.ResponseWriter, r *http.Request) {
+	_ = r // Not used in this stub implementation
 	response := Response{
 		Status:  "ok",
 		Message: "Broker creation is not implemented yet",
@@ -231,46 +322,74 @@ func (s *Server) createBroker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getBrokers(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
+	status, err := createNewClient(w, r, s)
+	if err != nil {
+		logger.Error("Failed to create Kafka client for brokers operation", "broker", broker, "error", err)
+		sendError(w, "Failed to create Kafka client", err)
+		return
+	}
+	if !status {
+		logger.Error("Client creation failed for brokers operation", "broker", broker)
+		sendError(w, "Failed to create Kafka client", fmt.Errorf("client creation failed"))
+		return
+	}
+
+	if s.kafkaClient == nil {
+		logger.Error("Kafka client not initialized for brokers operation", "broker", broker)
+		sendError(w, "Kafka client not initialized", fmt.Errorf("kafka client is nil"))
+		return
+	}
+
 	brokers := s.kafkaClient.Brokers()
 	brokerList := make([]map[string]interface{}, 0)
 
-	for _, broker := range brokers {
-		connected, err := broker.Connected()
+	for _, brokerInfo := range brokers {
+		connected, err := brokerInfo.Connected()
 		if err != nil {
 			connected = false
 		}
 
-		tlsState, _ := broker.TLSConnectionState()
+		tlsState, _ := brokerInfo.TLSConnectionState()
 
-		brokerInfo := map[string]interface{}{
-			"id":        broker.ID(),
-			"addr":      broker.Addr(),
+		brokerData := map[string]interface{}{
+			"id":        brokerInfo.ID(),
+			"addr":      brokerInfo.Addr(),
 			"connected": connected,
-			"rack":      broker.Rack(),
+			"rack":      brokerInfo.Rack(),
 			"state":     tlsState,
 		}
-		brokerList = append(brokerList, brokerInfo)
+		brokerList = append(brokerList, brokerData)
 	}
 
+	logger.Info("Successfully retrieved brokers", "broker", broker, "broker_count", len(brokerList))
 	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: brokerList})
 }
 
 func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 
 	if err != nil {
+		logger.Error("Failed to create admin client for listing topics", "broker", broker, "error", err)
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-
-	// defer admin.Close()
+	defer admin.Close()
 
 	topics, err := admin.ListTopics()
 
 	if err != nil {
+		logger.Error("Failed to list topics from Kafka", "broker", broker, "error", err)
 		sendError(w, "Failed to list topics", err)
 		return
 	}
+
+	logger.Debug("Successfully retrieved topics", "broker", broker, "topic_count", len(topics))
 
 	topicList := make([]map[string]interface{}, 0, len(topics))
 	for name, details := range topics {
@@ -289,57 +408,78 @@ func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
 	var req TopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("Invalid request body for topic creation", "broker", broker, "error", err)
 		sendError(w, "Invalid request body", err)
 		return
 	}
 
+	logger.Info("Topic creation request details",
+		"broker", broker,
+		"topic_name", req.Name,
+		"partitions", req.Partitions,
+		"replication_factor", req.ReplicationFactor)
+
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 	if err != nil {
+		logger.Error("Failed to create admin client for topic creation", "broker", broker, "topic_name", req.Name, "error", err)
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	// defer admin.Close()
-
+	defer admin.Close()
 	err = admin.CreateTopic(req.Name, &sarama.TopicDetail{
 		NumPartitions:     req.Partitions,
 		ReplicationFactor: req.ReplicationFactor,
 	}, false)
 	if err != nil {
+		logger.Error("Failed to create topic in Kafka", "broker", broker, "topic_name", req.Name, "error", err)
 		sendError(w, "Failed to create topic", err)
 		return
 	}
 
+	logger.Info("Topic created successfully", "broker", broker, "topic_name", req.Name, "partitions", req.Partitions, "replication_factor", req.ReplicationFactor)
 	sendJSON(w, http.StatusCreated, Response{Status: "ok", Message: fmt.Sprintf("Topic '%s' created successfully", req.Name)})
 }
 
 func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
 	var req TopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("Invalid request body for topic deletion", "broker", broker, "error", err)
 		sendError(w, "Invalid request body", err)
 		return
 	}
-
 	topicName := req.Name
 	if topicName == "" {
+		logger.Warn("Topic name is required for deletion", "broker", broker)
 		sendError(w, "Topic name is required", nil)
 		return
 	}
 
+	logger.Info("Topic deletion request details", "broker", broker, "topic_name", topicName)
+
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 	if err != nil {
+		logger.Error("Failed to create admin client for topic deletion", "broker", broker, "topic_name", topicName, "error", err)
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	// defer admin.Close()
+	defer admin.Close()
 
 	err = admin.DeleteTopic(topicName)
 	if err != nil {
+		logger.Error("Failed to delete topic from Kafka", "broker", broker, "topic_name", topicName, "error", err)
 		sendError(w, "Failed to delete topic", err)
 		return
 	}
 
+	logger.Info("Topic deleted successfully", "broker", broker, "topic_name", topicName)
 	sendJSON(w, http.StatusOK, Response{Status: "ok", Message: fmt.Sprintf("Topic '%s' deleted successfully", topicName)})
 }
 
@@ -347,12 +487,12 @@ func sendJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		log.Printf("Failed to encode JSON response: %v", err)
+		logger.Error("Failed to encode JSON response", "error", err)
 	}
 }
 
 func sendError(w http.ResponseWriter, message string, err error) {
-	log.Printf("ERROR: %s: %v", message, err)
+	logger.Error(message, "error", err)
 	sendJSON(w, http.StatusInternalServerError, Response{
 		Status:  "error",
 		Message: fmt.Sprintf("%s: %v", message, err),
@@ -382,21 +522,46 @@ var consumedHistory = make(map[string][]OffsetHistoryEntry)
 
 // Handler for messages per minute
 func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request) {
-	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
+	vars := mux.Vars(r)
+	broker := vars["broker"]
 
+	status, err := createNewClient(w, r, s)
 	if err != nil {
-		sendError(w, "Failed to create admin client", err)
+		logger.Error("Failed to create Kafka client for messages per minute", "broker", broker, "error", err)
+		sendError(w, "Failed to create Kafka client", err)
+		return
+	}
+	if !status {
+		logger.Error("Client creation failed for messages per minute", "broker", broker)
+		sendError(w, "Failed to create Kafka client", fmt.Errorf("client creation failed"))
 		return
 	}
 
-	// defer admin.Close()
+	if s.kafkaClient == nil {
+		logger.Error("Kafka client not initialized for messages per minute", "broker", broker)
+		sendError(w, "Kafka client not initialized", fmt.Errorf("kafka client is nil"))
+		return
+	}
+
+	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
+
+	if err != nil {
+		logger.Error("Failed to create admin client for messages per minute", "broker", broker, "error", err)
+		sendError(w, "Failed to create admin client", nil)
+		return
+	}
+
+	defer admin.Close()
 
 	topics, err := admin.ListTopics()
 
 	if err != nil {
-		sendError(w, "Failed to list topics", err)
+		logger.Error("Failed to list topics for messages per minute", "broker", broker, "error", err)
+		sendError(w, "Failed to list topics", nil)
 		return
 	}
+
+	logger.Debug("Processing message metrics", "broker", broker, "topic_count", len(topics))
 
 	// Calculate produced and consumed message counts in the last minute for each topic
 	counts := []MessagesLastMinute{}
@@ -406,11 +571,10 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 	totalAllProducedSec := int64(0)
 	totalAllConsumedSec := int64(0)
 
-	for name := range topics {
-		// Produced: sum latest offsets across all partitions
+	for name := range topics { // Produced: sum latest offsets across all partitions
 		partitions, err := s.kafkaClient.Partitions(name)
 		if err != nil {
-			continue
+			logger.Warn("Failed to get partitions for topic", "broker", broker, "topic", name, "error", err)
 		}
 		var totalProduced int64 = 0
 		for _, partition := range partitions {
@@ -419,47 +583,44 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 				totalProduced += offset
 			}
 		}
-
 		// Consumed: sum committed offsets for all consumer groups
 		var totalConsumed int64 = 0
 		groups, err := admin.ListConsumerGroups()
-		if err == nil {
-			for group := range groups {
-				offsets, err := admin.ListConsumerGroupOffsets(group, map[string][]int32{name: partitions})
-				if err == nil && offsets.Blocks != nil {
-					for _, partition := range partitions {
-						block := offsets.GetBlock(name, partition)
-						if block != nil && block.Offset > 0 {
-							totalConsumed += block.Offset
-						}
+		if err != nil {
+			logger.Warn("Failed to list consumer groups", "broker", broker, "error", err)
+		}
+
+		for group := range groups {
+			offsets, err := admin.ListConsumerGroupOffsets(group, map[string][]int32{name: partitions})
+			if err == nil && offsets.Blocks != nil {
+				for _, partition := range partitions {
+					block := offsets.GetBlock(name, partition)
+					if block != nil && block.Offset > 0 {
+						totalConsumed += block.Offset
 					}
 				}
 			}
-		}
-
-		// Store offset history for rolling window
+		} // Store offset history for rolling window
 		producedHistory[name] = append(producedHistory[name], OffsetHistoryEntry{Offset: totalProduced, Timestamp: now})
 		consumedHistory[name] = append(consumedHistory[name], OffsetHistoryEntry{Offset: totalConsumed, Timestamp: now})
 
-		// Remove entries older than 1 minute
+		// Remove entries older than 1 minute using slices.DeleteFunc
 		pruneMinute := now.Add(-1 * time.Minute)
-		for len(producedHistory[name]) > 0 && producedHistory[name][0].Timestamp.Before(pruneMinute) {
-			producedHistory[name] = producedHistory[name][1:]
-		}
-		for len(consumedHistory[name]) > 0 && consumedHistory[name][0].Timestamp.Before(pruneMinute) {
-			consumedHistory[name] = consumedHistory[name][1:]
-		}
+		producedHistory[name] = slices.DeleteFunc(producedHistory[name], func(entry OffsetHistoryEntry) bool {
+			return entry.Timestamp.Before(pruneMinute)
+		})
+		consumedHistory[name] = slices.DeleteFunc(consumedHistory[name], func(entry OffsetHistoryEntry) bool {
+			return entry.Timestamp.Before(pruneMinute)
+		})
 
-		// Remove entries older than 1 second
+		// Create filtered copies for second-based calculations
 		pruneSecond := now.Add(-1 * time.Second)
-		producedHistorySec := producedHistory[name]
-		consumedHistorySec := consumedHistory[name]
-		for len(producedHistorySec) > 0 && producedHistorySec[0].Timestamp.Before(pruneSecond) {
-			producedHistorySec = producedHistorySec[1:]
-		}
-		for len(consumedHistorySec) > 0 && consumedHistorySec[0].Timestamp.Before(pruneSecond) {
-			consumedHistorySec = consumedHistorySec[1:]
-		}
+		producedHistorySec := slices.DeleteFunc(slices.Clone(producedHistory[name]), func(entry OffsetHistoryEntry) bool {
+			return entry.Timestamp.Before(pruneSecond)
+		})
+		consumedHistorySec := slices.DeleteFunc(slices.Clone(consumedHistory[name]), func(entry OffsetHistoryEntry) bool {
+			return entry.Timestamp.Before(pruneSecond)
+		})
 
 		// Calculate produced/consumed in last minute
 		producedCount := int64(0)
@@ -502,6 +663,6 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 		ProducedPerSec: totalAllProducedSec,
 		ConsumedPerSec: totalAllConsumedSec,
 	})
-
+	logger.Info("Successfully calculated message metrics", "broker", broker, "total_topics", len(counts)-1, "total_produced", totalAllProduced, "total_consumed", totalAllConsumed)
 	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: counts})
 }

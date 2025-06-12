@@ -1,15 +1,30 @@
 services:
-  zookeeper:
-    container_name: zookeeper
-    image: bitnami/zookeeper:3.9
-    environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
-    ports:
-      - "2181:2181"
-    networks:
-      - kafka-net
-    volumes:
-      - zookeeper_data:/bitnami/zookeeper
+  # Zookeeper is not needed for KRaft mode (Kafka 4.0+)
+  # Uncomment this if you want to switch back to Zookeeper mode
+  # zookeeper:
+  #   container_name: zookeeper
+  #   image: bitnami/zookeeper:3.9
+  #   environment:
+  #     - ALLOW_ANONYMOUS_LOGIN=yes
+  #     - ZOO_TICK_TIME=2000
+  #     - ZOO_INIT_LIMIT=5
+  #     - ZOO_SYNC_LIMIT=2
+  #     - ZOO_MAX_CLIENT_CNXNS=60
+  #     - ZOO_4LW_COMMANDS_WHITELIST=srvr,mntr,conf,ruok
+  #     - ZOO_HEAP_SIZE=256
+  #     - BITNAMI_DEBUG=yes
+  #   ports:
+  #     - "2181:2181"
+  #   networks:
+  #     - kafka-net
+  #   volumes:
+  #     - zookeeper_data:/bitnami/zookeeper
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
 
   kafka:
     container_name: kafka
@@ -17,20 +32,58 @@ services:
     ports:
       - "9092:9092"
       - "9093:9093"
+      - "9094:9094"  # Controller listener for KRaft
     environment:
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=CONTROLLER://0.0.0.0:9094,INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092
       - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9093,EXTERNAL://localhost:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9094
+      
+      # Node configuration
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_BROKER_ID=1
+      
+      # Basic configuration
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      
+      # Performance settings for development
+      - KAFKA_CFG_NUM_PARTITIONS=3
+      - KAFKA_CFG_NUM_RECOVERY_THREADS_PER_DATA_DIR=1
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=1
+      
+      # Log retention settings for development
+      - KAFKA_CFG_LOG_RETENTION_HOURS=24
+      - KAFKA_CFG_LOG_RETENTION_BYTES=1073741824
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824
+      
+      # Auto-create topics for development
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
+      
+      # JVM heap settings for development
+      - KAFKA_HEAP_OPTS=-Xmx512m -Xms512m
+      
+      # Debug settings
       - BITNAMI_DEBUG=yes
+      - KAFKA_CFG_LOG_LEVEL=INFO
     volumes:
       - kafka_data:/bitnami/kafka
     networks:
       - kafka-net
-    depends_on:
-      - zookeeper
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   app:
     build:
@@ -40,11 +93,15 @@ services:
       - "8080:8080"
       - "8081:8081"
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     volumes:
       - .:/app
     networks:
       - kafka-net
+    environment:
+      - KAFKA_BROKER=kafka:9093
+      - LOG_LEVEL=debug
 
 networks:
   kafka-net:

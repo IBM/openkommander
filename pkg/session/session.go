@@ -11,6 +11,7 @@ import (
 
 	"github.com/IBM/openkommander/pkg/cluster"
 	"github.com/IBM/openkommander/pkg/constants"
+	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/sarama"
 )
 
@@ -62,7 +63,7 @@ func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 func (s *session) Disconnect() {
 	if s.client != nil {
 		if err := s.client.Close(); err != nil {
-			fmt.Printf("Error closing client: %v\n", err)
+			logger.Error("Error closing client", "error", err)
 		}
 	}
 	s.client = nil
@@ -126,7 +127,7 @@ func createDefaultSession() error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
+			logger.Error("Error closing file", "error", err)
 		}
 	}()
 
@@ -146,7 +147,7 @@ func saveSession() error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
+			logger.Error("Error closing session file", "error", err)
 		}
 	}()
 
@@ -175,7 +176,7 @@ func loadSession() error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
+			logger.Error("Error closing session file", "error", err)
 		}
 	}()
 
@@ -204,7 +205,7 @@ func init() {
 
 	err := loadSession()
 	if err != nil {
-		fmt.Println("Error loading session:", err)
+		logger.Error("Error loading session", "error", err)
 	}
 }
 
@@ -245,10 +246,10 @@ func Login() {
 		fmt.Printf("Kafka Version [%s]\n", currentSession.version)
 		err = saveSession()
 		if err != nil {
-			fmt.Println("Error saving session:", err)
+			logger.Error("Error saving session", "error", err)
 		}
 	} else {
-		fmt.Printf("Error connecting to cluster: %v\n", err)
+		logger.Error("Error connecting to cluster", "error", err)
 	}
 }
 

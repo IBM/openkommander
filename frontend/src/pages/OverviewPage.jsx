@@ -109,7 +109,7 @@ const OverviewPage = () => {
     <>
       <ErrorNotification error={error} onClose={() => setError(null)} />
       <Stack gap={7}>
-        <ClusterMetrics metrics={metrics} loading={loading || (metricloading && !pollingEnabled)} lastRefreshed={lastRefreshed} />
+        <ClusterMetrics metrics={metrics} loading={loading} lastRefreshed={lastRefreshed} />
         <Tile>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h4 style={{ margin: 0 }}>Polling Settings</h4>
