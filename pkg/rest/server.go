@@ -371,7 +371,6 @@ func (s *Server) getBrokers(w http.ResponseWriter, r *http.Request) {
 func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	broker := vars["broker"]
-
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 
 	if err != nil {
@@ -379,7 +378,11 @@ func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	defer admin.Close()
+	defer func() {
+		if closeErr := admin.Close(); closeErr != nil {
+			logger.Warn("Failed to close admin client", "error", closeErr)
+		}
+	}()
 
 	topics, err := admin.ListTopics()
 
@@ -423,14 +426,17 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 		"topic_name", req.Name,
 		"partitions", req.Partitions,
 		"replication_factor", req.ReplicationFactor)
-
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 	if err != nil {
 		logger.Error("Failed to create admin client for topic creation", "broker", broker, "topic_name", req.Name, "error", err)
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	defer admin.Close()
+	defer func() {
+		if closeErr := admin.Close(); closeErr != nil {
+			logger.Warn("Failed to close admin client", "error", closeErr)
+		}
+	}()
 	err = admin.CreateTopic(req.Name, &sarama.TopicDetail{
 		NumPartitions:     req.Partitions,
 		ReplicationFactor: req.ReplicationFactor,
@@ -463,14 +469,17 @@ func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("Topic deletion request details", "broker", broker, "topic_name", topicName)
-
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 	if err != nil {
 		logger.Error("Failed to create admin client for topic deletion", "broker", broker, "topic_name", topicName, "error", err)
 		sendError(w, "Failed to create admin client", err)
 		return
 	}
-	defer admin.Close()
+	defer func() {
+		if closeErr := admin.Close(); closeErr != nil {
+			logger.Warn("Failed to close admin client", "error", closeErr)
+		}
+	}()
 
 	err = admin.DeleteTopic(topicName)
 	if err != nil {
@@ -544,14 +553,17 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 	}
 
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
-
 	if err != nil {
 		logger.Error("Failed to create admin client for messages per minute", "broker", broker, "error", err)
 		sendError(w, "Failed to create admin client", nil)
 		return
 	}
 
-	defer admin.Close()
+	defer func() {
+		if closeErr := admin.Close(); closeErr != nil {
+			logger.Warn("Failed to close admin client", "error", closeErr)
+		}
+	}()
 
 	topics, err := admin.ListTopics()
 
