@@ -1,0 +1,18 @@
+@use '@carbon/styles/scss/config' with (
+  $font-path: '@ibm/plex'
+);
+
+@use '@carbon/styles' as styles;
+@use '@carbon/styles/scss/theme' as *;
+@use '@carbon/styles/scss/spacing' as *;
+
+body {
+  background: #161616;
+}
+
+.cds--data-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}

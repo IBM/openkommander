@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
+	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/openkommander/pkg/session"
 	"github.com/IBM/sarama"
 )
@@ -40,7 +40,7 @@ func ProduceMessage(topicName, key, msg string, partition, acks int) (successMes
 	}
 	defer func() {
 		if err := producer.Close(); err != nil {
-			log.Println("Failed to close Kafka producer cleanly:", err)
+			logger.Warn("Failed to close Kafka producer cleanly", "error", err)
 		}
 	}()
 

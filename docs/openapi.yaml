@@ -1,0 +1,518 @@
+openapi: 3.0.0
+info:
+  title: OpenKommander API
+  description: API for managing Apache Kafka clusters, topics, consumers, and producers
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: OpenKommander API v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  
+  /brokers:
+    get:
+      summary: List brokers
+      description: Returns a list of Kafka brokers in the cluster
+      responses:
+        '200':
+          description: List of brokers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BrokerInfo'
+  
+  /topics:
+    get:
+      summary: List topics
+      description: Returns a list of Kafka topics in the cluster
+      responses:
+        '200':
+          description: List of topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopicInfo'
+    post:
+      summary: Create topic
+      description: Creates a new Kafka topic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicCreateRequest'
+      responses:
+        '201':
+          description: Topic created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: created
+  
+  /topics/{name}:
+    get:
+      summary: Get topic details
+      description: Returns details of a specific topic
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Topic details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicDetail'
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete topic
+      description: Deletes a Kafka topic
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Topic deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: deleted
+        '404':
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /messages/{topic}:
+    post:
+      summary: Produce message
+      description: Sends a message to a Kafka topic
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '202':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: message sent
+  
+  /consumers:
+    get:
+      summary: List consumer groups
+      description: Returns a list of all consumer groups
+      responses:
+        '200':
+          description: List of consumer groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConsumerGroupInfo'
+    post:
+      summary: Create consumer
+      description: Creates a new Kafka consumer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumerCreateRequest'
+      responses:
+        '201':
+          description: Consumer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumerCreateResponse'
+        '409':
+          description: Consumer ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /consumers/{id}:
+    delete:
+      summary: Stop consumer
+      description: Stops a running consumer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consumer stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: stopped
+        '404':
+          description: Consumer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /consumers/{group}:
+    get:
+      summary: Get consumer group details
+      description: Returns details of a specific consumer group
+      parameters:
+        - name: group
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Consumer group details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumerGroupInfo'
+        '404':
+          description: Consumer group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /clusters:
+    get:
+      summary: List clusters
+      description: Returns a list of configured Kafka clusters
+      responses:
+        '200':
+          description: List of clusters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClusterInfo'
+  
+  /clusters/{name}:
+    get:
+      summary: Get cluster details
+      description: Returns details of a specific cluster
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cluster details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Cluster not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /clusters/{name}/brokers:
+    get:
+      summary: List brokers in a cluster
+      description: Returns brokers in a specific cluster
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of brokers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BrokerInfo'
+  
+  /clusters/{name}/topics:
+    get:
+      summary: List topics in a cluster
+      description: Returns topics in a specific cluster
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopicInfo'
+
+components:
+  schemas:
+    BrokerInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        host:
+          type: string
+          example: localhost
+        port:
+          type: integer
+          format: int32
+          example: 9092
+        partitions_leader:
+          type: integer
+          example: 5
+        partitions:
+          type: integer
+          example: 10
+        in_sync_partitions:
+          type: integer
+          example: 10
+    
+    TopicInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: test-topic
+        partitions:
+          type: integer
+          format: int32
+          example: 3
+        replication_factor:
+          type: integer
+          format: int16
+          example: 1
+        internal:
+          type: boolean
+          example: false
+        replicas:
+          type: integer
+          example: 3
+        in_sync_replicas:
+          type: integer
+          example: 3
+        cleanup_policy:
+          type: string
+          example: delete
+    
+    TopicCreateRequest:
+      type: object
+      required:
+        - name
+        - partitions
+        - replication_factor
+      properties:
+        name:
+          type: string
+          example: new-topic
+        partitions:
+          type: integer
+          format: int32
+          example: 3
+        replication_factor:
+          type: integer
+          format: int16
+          example: 1
+    
+    TopicDetail:
+      type: object
+      properties:
+        name:
+          type: string
+          example: test-topic
+        partitions:
+          type: integer
+          format: int32
+          example: 3
+        replication_factor:
+          type: integer
+          format: int16
+          example: 1
+        partition_ids:
+          type: array
+          items:
+            type: integer
+            format: int32
+          example: [0, 1, 2]
+    
+    ConsumerGroupInfo:
+      type: object
+      properties:
+        group_id:
+          type: string
+          example: test-consumer-group
+        members:
+          type: integer
+          example: 2
+        topics:
+          type: integer
+          example: 3
+        lag:
+          type: integer
+          format: int64
+          example: 10
+        coordinator:
+          type: integer
+          format: int32
+          example: 1
+        state:
+          type: string
+          example: Stable
+        topic_lags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopicLagInfo'
+    
+    TopicLagInfo:
+      type: object
+      properties:
+        topic:
+          type: string
+          example: test-topic
+        partition:
+          type: integer
+          format: int32
+          example: 0
+        lag:
+          type: integer
+          format: int64
+          example: 5
+    
+    ConsumerCreateRequest:
+      type: object
+      required:
+        - topic
+        - group
+        - id
+      properties:
+        topic:
+          type: string
+          example: test-topic
+        group:
+          type: string
+          example: test-consumer-group
+        id:
+          type: string
+          example: consumer-1
+    
+    ConsumerCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: consumer-1
+        status:
+          type: string
+          example: created
+        poll:
+          type: string
+          example: /api/v1/consumers/consumer-1/messages
+    
+    ClusterInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: production
+        brokers:
+          type: array
+          items:
+            type: string
+          example: ["kafka1:9092", "kafka2:9092"]
+        status:
+          type: string
+          example: connected
+    
+    ErrorResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: Topic 'test-topic' not found
+        error:
+          type: string
+          example: resource not found

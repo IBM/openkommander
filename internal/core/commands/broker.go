@@ -2,12 +2,13 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/IBM/openkommander/pkg/session"
 	"github.com/IBM/sarama"
 )
 
 // When successful, returns a map of topic names to their details
-func GetBrokerClient() (client sarama.Client,f *Failure) {
+func GetBrokerClient() (client sarama.Client, f *Failure) {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
 		fmt.Println("Error: no session found.")

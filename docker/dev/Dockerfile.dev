@@ -8,6 +8,8 @@ RUN go mod download
 
 COPY . .
 
+RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 8080
 
 CMD ["sleep", "infinity"]

@@ -11,6 +11,7 @@ import (
 
 	"github.com/IBM/openkommander/pkg/cluster"
 	"github.com/IBM/openkommander/pkg/constants"
+	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/sarama"
 )
 
@@ -62,7 +63,7 @@ func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 func (s *session) Disconnect() {
 	if s.client != nil {
 		if err := s.client.Close(); err != nil {
-			fmt.Printf("Error closing client: %v\n", err)
+			logger.Error("Error closing client", "error", err)
 		}
 	}
 	s.client = nil
@@ -115,14 +116,18 @@ func GetCurrentSession() *session {
 var currentSession *session
 
 func createDefaultSession() error {
-	file, err := os.Create(constants.OpenKommanderConfigFilename)
+	err := os.MkdirAll(constants.OpenKommanderFolder, 0755)
 	if err != nil {
-		fmt.Println("Error creating session file:", err)
-		return err
+		return fmt.Errorf("error creating directory %s: %w", constants.OpenKommanderFolder, err)
+	}
+
+	file, err := os.OpenFile(constants.OpenKommanderConfigFilename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("error creating session file %s: %w", constants.OpenKommanderConfigFilename, err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
+			logger.Error("Error closing file", "error", err)
 		}
 	}()
 
@@ -131,22 +136,25 @@ func createDefaultSession() error {
 }
 
 func saveSession() error {
-	file, err := os.Create(constants.OpenKommanderConfigFilename)
+	err := os.MkdirAll(constants.OpenKommanderFolder, 0755)
 	if err != nil {
-		fmt.Println("Error creating session file:", err)
-		return err
+		return fmt.Errorf("error creating directory %s: %w", constants.OpenKommanderFolder, err)
+	}
+
+	file, err := os.OpenFile(constants.OpenKommanderConfigFilename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("error creating session file %s: %w", constants.OpenKommanderConfigFilename, err)
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
+			logger.Error("Error closing session file", "error", err)
 		}
 	}()
 
 	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated, Version: currentSession.version.String()}
 	err = json.NewEncoder(file).Encode(sessionData)
 	if err != nil {
-		fmt.Println("Error encoding session data:", err)
-		return err
+		return fmt.Errorf("error encoding session data: %w", err)
 	}
 	return nil
 }
@@ -168,7 +176,7 @@ func loadSession() error {
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
+			logger.Error("Error closing session file", "error", err)
 		}
 	}()
 
@@ -197,7 +205,7 @@ func init() {
 
 	err := loadSession()
 	if err != nil {
-		fmt.Println("Error loading session:", err)
+		logger.Error("Error loading session", "error", err)
 	}
 }
 
@@ -238,10 +246,10 @@ func Login() {
 		fmt.Printf("Kafka Version [%s]\n", currentSession.version)
 		err = saveSession()
 		if err != nil {
-			fmt.Println("Error saving session:", err)
+			logger.Error("Error saving session", "error", err)
 		}
 	} else {
-		fmt.Printf("Error connecting to cluster: %v\n", err)
+		logger.Error("Error connecting to cluster", "error", err)
 	}
 }
 
