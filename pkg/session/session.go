@@ -3,9 +3,10 @@ package session
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
+	"github.com/joho/godotenv"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,27 +30,24 @@ type session struct {
 	adminClient     sarama.ClusterAdmin
 	isAuthenticated bool
 	version         sarama.KafkaVersion
-}
-
-type SessionData struct {
-	Brokers         []string `json:"brokers"`
-	IsAuthenticated bool     `json:"isAuthenticated"`
-	Version         string   `json:"version"`
+	isSecureKafka   bool
+	username        string
+	password        string
 }
 
 func (s *session) Info() string {
-	return fmt.Sprintf("Brokers: %v, Authenticated: %v, Version: %v", s.brokers, s.isAuthenticated, s.version)
+	return fmt.Sprintf("Brokers: %v, Authenticated: %v, Version: %v, Secure: %v", s.brokers, s.isAuthenticated, s.version, s.isSecureKafka)
 }
 
 func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
-	client, err := cluster.NewCluster(s.brokers, s.version).Connect(ctx)
+	client, err := cluster.NewCluster(getSaramaConfig(s), s.brokers).Connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster: %w", err)
 	}
-	adminClient, err := cluster.NewCluster(s.brokers, s.version).ConnectAdmin(ctx)
+	adminClient, err := cluster.NewCluster(getSaramaConfig(s), s.brokers).ConnectAdmin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster as admin: %w", err)
 	}
@@ -69,6 +67,10 @@ func (s *session) Disconnect() {
 	s.adminClient = nil
 	s.isAuthenticated = false
 	s.version = constants.SaramaKafkaVersion
+	s.isSecureKafka = false
+	s.username = ""
+	s.password = ""
+	s.brokers = []string{}
 	fmt.Println("Logged out successfully!")
 }
 
@@ -96,7 +98,7 @@ func (s *session) GetAdminClient() (sarama.ClusterAdmin, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	adminClient, err := cluster.NewCluster(s.brokers, s.version).ConnectAdmin(ctx)
+	adminClient, err := cluster.NewCluster(getSaramaConfig(s), s.brokers).ConnectAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -114,36 +116,16 @@ func GetCurrentSession() *session {
 
 var currentSession *session
 
-func createDefaultSession() error {
-	file, err := os.Create(constants.OpenKommanderConfigFilename)
-	if err != nil {
-		fmt.Println("Error creating session file:", err)
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
-		}
-	}()
-
-	sessionData := SessionData{Brokers: []string{}, IsAuthenticated: false, Version: constants.SaramaKafkaVersion.String()}
-	return json.NewEncoder(file).Encode(sessionData)
-}
-
 func saveSession() error {
-	file, err := os.Create(constants.OpenKommanderConfigFilename)
-	if err != nil {
-		fmt.Println("Error creating session file:", err)
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
-		}
-	}()
+	envMap := make(map[string]string)
+	envMap["OK_BROKERS"] = strings.Join(currentSession.brokers, ",")
+	envMap["OK_IS_AUTHENTICATED"] = strconv.FormatBool(currentSession.isAuthenticated)
+	envMap["OK_VERSION"] = currentSession.version.String()
+	envMap["OK_IS_SECURE_KAFKA"] = strconv.FormatBool(currentSession.isSecureKafka)
+	envMap["OK_USERNAME"] = currentSession.username
+	envMap["OK_PASSWORD"] = currentSession.password
 
-	sessionData := SessionData{Brokers: currentSession.brokers, IsAuthenticated: currentSession.isAuthenticated, Version: currentSession.version.String()}
-	err = json.NewEncoder(file).Encode(sessionData)
+	err := godotenv.Write(envMap, ".env")
 	if err != nil {
 		fmt.Println("Error encoding session data:", err)
 		return err
@@ -152,37 +134,12 @@ func saveSession() error {
 }
 
 func loadSession() error {
-	file, err := os.Open(constants.OpenKommanderConfigFilename)
-	if err != nil {
-		err = createDefaultSession()
-		if err != nil {
-			fmt.Println("Error creating session file:", err)
-			return err
-		}
-
-		file, err = os.Open(constants.OpenKommanderConfigFilename)
-		if err != nil {
-			fmt.Println("Error opening session file:", err)
-			return err
-		}
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			fmt.Printf("Error closing file: %v\n", err)
-		}
-	}()
-
-	var data SessionData
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&data)
-	if err != nil {
-		fmt.Println("Error decoding session data:", err)
-		return err
-	}
-
-	currentSession.brokers = data.Brokers
-	currentSession.isAuthenticated = data.IsAuthenticated
-	currentSession.version, _ = sarama.ParseKafkaVersion(data.Version)
+	currentSession.brokers = strings.Split(os.Getenv("OK_BROKERS"), ",")
+	currentSession.isAuthenticated, _ = strconv.ParseBool(os.Getenv("OK_IS_AUTHENTICATED"))
+	currentSession.version, _ = sarama.ParseKafkaVersion(os.Getenv("OK_VERSION"))
+	currentSession.isSecureKafka, _ = strconv.ParseBool(os.Getenv("OK_IS_SECURE_KAFKA"))
+	currentSession.username = os.Getenv("OK_USERNAME")
+	currentSession.password = os.Getenv("OK_PASSWORD")
 	return nil
 }
 
@@ -193,10 +150,13 @@ func init() {
 		client:          nil,
 		adminClient:     nil,
 		version:         constants.SaramaKafkaVersion,
+		isSecureKafka:   false,
+		username:        "",
+		password:        "",
 	}
-
+	envReadError := godotenv.Load()
 	err := loadSession()
-	if err != nil {
+	if err != nil || envReadError != nil {
 		fmt.Println("Error loading session:", err)
 	}
 }
@@ -206,29 +166,17 @@ func Login() {
 		fmt.Println("Already logged in.")
 		return
 	}
-
-	versionReader := bufio.NewReader(os.Stdin)
-	fmt.Printf("Enter kafka version [%s]: ", constants.KafkaVersion)
-
-	version, _ := versionReader.ReadString('\n')
-	version = strings.TrimSpace(version)
-	if version == "" {
-		version = constants.KafkaVersion
-	}
+	version := readUserInput("Enter kafka version [" + constants.KafkaVersion + "]: ")
 	currentSession.version, _ = sarama.ParseKafkaVersion(version)
 
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Printf("Enter broker address [%s]: ", constants.KafkaBroker)
-
-	broker, _ := reader.ReadString('\n')
-	broker = strings.TrimSpace(broker)
-	if broker == "" {
-		broker = constants.KafkaBroker
+	currentSession.isSecureKafka = readUserClosedInput("Is your kafka configured with SASL_PLAINTEXT security? (y/n): ")
+	if currentSession.isSecureKafka {
+		currentSession.username = readUserInput("Enter configured username: ")
+		currentSession.password = readUserInput("Enter configured password: ")
 	}
 
+	broker := readUserInput("Enter broker address [" + constants.KafkaBroker + "]: ")
 	currentSession.brokers = []string{broker}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := currentSession.Connect(ctx)
@@ -269,4 +217,47 @@ func DisplaySession() {
 	} else {
 		fmt.Println("No active session.")
 	}
+}
+
+func readUserInput(inputMessage string) string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print(inputMessage)
+
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	if input == "" {
+		fmt.Println("Please enter a valid Input")
+		return readUserInput(inputMessage)
+	}
+	return input
+}
+
+func readUserClosedInput(inputMessage string) bool {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print(inputMessage)
+
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	switch input {
+	case "y":
+		return true
+	case "n":
+		return false
+	default:
+		fmt.Println("Please enter a valid Input")
+		readUserClosedInput(inputMessage)
+	}
+	return false
+}
+
+func getSaramaConfig(s *session) *sarama.Config {
+	config := sarama.NewConfig()
+	config.Version = s.version
+	if s.isSecureKafka {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = s.username
+		config.Net.SASL.Password = s.password
+		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+	}
+	return config
 }
