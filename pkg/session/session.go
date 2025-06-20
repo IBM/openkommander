@@ -221,28 +221,29 @@ func DisplaySession() {
 
 func readUserInput(inputMessage string) string {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf(inputMessage)
+	fmt.Print(inputMessage)
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 	if input == "" {
 		fmt.Println("Please enter a valid Input")
-		readUserInput(inputMessage)
+		return readUserInput(inputMessage)
 	}
 	return input
 }
 
 func readUserClosedInput(inputMessage string) bool {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf(inputMessage)
+	fmt.Print(inputMessage)
 
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
-	if input == "y" {
+	switch input {
+	case "y":
 		return true
-	} else if input == "n" {
+	case "n":
 		return false
-	} else {
+	default:
 		fmt.Println("Please enter a valid Input")
 		readUserClosedInput(inputMessage)
 	}
