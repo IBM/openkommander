@@ -4,10 +4,17 @@ BINARY_NAME=ok
 dev:
 	$(CONTAINER_CMD) -f docker-compose.dev.yml up --build -d
 
+secure-dev:
+	$(CONTAINER_CMD) -f docker-compose.dev.secure.yml up --build -d
+
 dev-run: build install
 
 clean:
-	$(CONTAINER_CMD) -f docker-compose.dev.yml down
+	$(CONTAINER_CMD) -f docker-compose.dev.yml down -v
+	rm -rf bin/*
+
+secure-clean:
+	$(CONTAINER_CMD) -f docker-compose.dev.secure.yml down -v
 	rm -rf bin/*
 
 setup:

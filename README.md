@@ -21,7 +21,7 @@ OpenKommander is a command line utility and admin UI for Apache Kafka compatible
 3. **Start the development environment**
    ```bash
    make setup
-   make dev
+   make dev #For secure use `make secure-dev`
    ```
 
 4. **Execute into the container**
@@ -50,7 +50,7 @@ kafka:
 You can modify `config/config.yaml` to connect to different Kafka clusters:
 
 ```yaml
-# Development environment (default)
+# Development environment (default) [use kafka:9094 for secure - user bob/bobpassword]
 kafka:
   broker: kafka:9093
 

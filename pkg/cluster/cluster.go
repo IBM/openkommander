@@ -11,9 +11,7 @@ type Cluster struct {
 	Config  *sarama.Config
 }
 
-func NewCluster(brokers []string, version sarama.KafkaVersion) *Cluster {
-	config := sarama.NewConfig()
-	config.Version = version
+func NewCluster(config *sarama.Config, brokers []string) *Cluster {
 	return &Cluster{
 		Brokers: brokers,
 		Config:  config,

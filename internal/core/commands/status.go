@@ -24,7 +24,7 @@ func NewFailure(err string, httpCode int) *Failure {
 func GetAdminClient() (sarama.ClusterAdmin, *Failure) {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
-		return nil, NewFailure("No active session found", http.StatusUnauthorized)
+		return nil, NewFailure("No active session found \n", http.StatusUnauthorized)
 	}
 
 	client, err := currentSession.GetAdminClient()
@@ -38,7 +38,7 @@ func GetAdminClient() (sarama.ClusterAdmin, *Failure) {
 func GetClient() (sarama.Client, *Failure) {
 	currentSession := session.GetCurrentSession()
 	if !currentSession.IsAuthenticated() {
-		return nil, NewFailure("No active session found", http.StatusUnauthorized)
+		return nil, NewFailure("No active session found \n", http.StatusUnauthorized)
 	}
 
 	client, err := currentSession.GetClient()
