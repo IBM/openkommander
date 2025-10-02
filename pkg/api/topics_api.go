@@ -35,6 +35,11 @@ func CreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListTopicsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	broker := vars["broker"]
+
+	fmt.Println("API - Listing topics for broker:", broker)
+
 	topics, failure := commands.ListTopics()
 	if failure != nil {
 		http.Error(w, failure.Err.Error(), failure.HttpCode)
