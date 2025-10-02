@@ -29,6 +29,11 @@ obj/
 
 .DS_Store
 
+# Test artifacts
+coverage.out
+coverage.html
+*.coverprofile
+
 
 frontend/.env*
 frontend/node_modules

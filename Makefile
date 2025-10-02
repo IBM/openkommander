@@ -87,6 +87,24 @@ install-sudo: build frontend-build
 	@echo "Installing with sudo..."
 	sudo cp bin/$(BINARY_NAME)_$(HOST_OS)_$(HOST_ARCH) /usr/local/bin/${BINARY_NAME}
 
+# Test targets
+test-coverage:
+	@echo "Running tests with coverage..."
+	$(GO) test -v -coverprofile=coverage.out ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-coverage-report:
+	@echo "Generating coverage report..."
+	$(GO) tool cover -func=coverage.out | grep total
+
+test-clean:
+	@echo "Cleaning test artifacts..."
+	rm -f coverage.out coverage.html
+
+test: test-clean test-coverage
+	@echo "All tests completed successfully!"
+
 dev-run: setup build install
 
-.PHONY: dev clean setup build install
+.PHONY: dev clean setup build install test test-coverage test-coverage-report test-clean
