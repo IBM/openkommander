@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+
 	"github.com/IBM/sarama"
 )
 

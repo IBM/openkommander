@@ -2,8 +2,9 @@ package cli
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 
+	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/openkommander/pkg/rest"
 	"github.com/spf13/cobra"
 )
@@ -25,9 +26,7 @@ func (ServerCommandList) GetCommands() []*OkCmd {
 			Run:   startRESTServer,
 			Flags: []OkFlag{
 				NewOkFlag(OkFlagString, "port", "p", "Specify the port for the REST server"),
-				NewOkFlag(OkFlagString, "brokers", "b", "Specify the Kafka brokers to connect to"),
 			},
-			RequiredFlags: []string{"port", "brokers"},
 		},
 	}
 }
@@ -38,18 +37,36 @@ func (ServerCommandList) GetSubcommands() []CommandList {
 
 func startRESTServer(cmd *cobra.Command, args []string) {
 	port, _ := cmd.Flags().GetString("port")
-	brokerslist, _ := cmd.Flags().GetString("brokers")
-	brokers := strings.Split(brokerslist, ",")
 
 	if port == "" {
-		fmt.Println("Error: Port is required")
-		return
+		fmt.Print("Enter port for the REST server: ")
+		if _, err := fmt.Scanln(&port); err != nil {
+			fmt.Println("Error reading port number:", err)
+			return
+		}
 	}
-	
-	if len(brokers) == 0 {
-		fmt.Println("Error: At least one broker is required")
+
+	if err := validatePort(port); err != nil {
+		logger.Error("Invalid port", "error", err)
 		return
 	}
 
-	rest.StartRESTServer(port, brokers)
+	rest.StartRESTServer(port)
+}
+
+func validatePort(port string) error {
+	if port == "" || port == "0" {
+		return fmt.Errorf("port number is required and cannot be 0")
+	}
+
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("invalid port number: %s", port)
+	}
+
+	if portNumber < 1 || portNumber > 65535 {
+		return fmt.Errorf("port number must be between 1 and 65535")
+	}
+
+	return nil
 }
