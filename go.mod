@@ -6,7 +6,7 @@ require (
 	github.com/IBM/sarama v1.46.1
 	github.com/gorilla/mux v1.8.1
 	github.com/jedib0t/go-pretty/v6 v6.6.8
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 )
 
 require (
@@ -27,11 +27,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	golang.org/x/crypto v0.42.0 // indirect
 	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
