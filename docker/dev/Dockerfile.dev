@@ -1,5 +1,7 @@
 FROM golang:1.24
 
+ENV GOFLAGS="-buildvcs=false"
+
 WORKDIR /app
 
 COPY go.mod ./
