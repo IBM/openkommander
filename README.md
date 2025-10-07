@@ -2,6 +2,23 @@
 
 OpenKommander is a command line utility and admin UI for Apache Kafka compatible brokers.
 
+## Quick Installation
+
+For the easiest installation experience, use our interactive setup script:
+
+```bash
+git clone https://github.com/IBM/openkommander.git
+cd openkommander
+./scripts/setup.sh
+```
+
+The script will guide you through different installation options:
+- **Local installation**: Direct installation on your system
+- **Docker**: Containerized installation with Docker
+- **Podman**: Containerized installation with Podman
+
+For detailed information about the setup script, see [scripts/README.md](scripts/README.md).
+
 ## Prerequisites
 
 - [Podman](https://podman.io/getting-started/installation) (required for running the development environment)
