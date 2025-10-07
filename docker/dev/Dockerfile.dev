@@ -1,5 +1,7 @@
 FROM golang:1.24
 
+ENV GOFLAGS="-buildvcs=false"
+
 WORKDIR /app
 
 COPY go.mod ./
@@ -12,10 +14,6 @@ RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists
 
 EXPOSE 8080
 
-RUN chown -R root:root /app
-
-USER root
-
-# RUN git confog --global --add safe.directory /app
+RUN git confog --global --add safe.directory /app
 
 CMD ["sleep", "infinity"]
