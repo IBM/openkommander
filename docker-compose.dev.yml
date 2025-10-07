@@ -102,7 +102,6 @@ services:
     environment:
       - KAFKA_BROKER=kafka:9093
       - LOG_LEVEL=debug
-    user: root
 
 networks:
   kafka-net:
