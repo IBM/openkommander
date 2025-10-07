@@ -12,4 +12,10 @@ RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists
 
 EXPOSE 8080
 
+RUN chown -R root:root /app
+
+USER root
+
+# RUN git confog --global --add safe.directory /app
+
 CMD ["sleep", "infinity"]
