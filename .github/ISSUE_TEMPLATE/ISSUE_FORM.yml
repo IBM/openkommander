@@ -1,8 +1,8 @@
 name: Bug Report
 description: File a bug report.
-title: "[Bug]: "
-labels: ["bug", "triage"]
-projects: ["openkommander"]
+title: '[Bug]: '
+labels: ['bug', 'triage']
+projects: ['IBM/109']
 assignees:
   - duartemartinho
 body:
@@ -24,7 +24,7 @@ body:
       label: What happened?
       description: Also tell us, what did you expect to happen?
       placeholder: Tell us what you see!
-      value: "A Bug"
+      value: 'A Bug'
     validations:
       required: true
   - type: dropdown
@@ -47,7 +47,7 @@ body:
     id: terms
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com). 
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com).
       options:
         - label: I agree to follow this project's Code of Conduct
           required: true
