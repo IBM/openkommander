@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/IBM/openkommander/internal/core/commands"
-	"github.com/gorilla/mux"
 )
 
 type CreateTopicRequest struct {
@@ -35,8 +34,7 @@ func CreateTopicHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListTopicsHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 
 	fmt.Println("API - Listing topics for broker:", broker)
 
@@ -53,8 +51,7 @@ func ListTopicsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteTopicHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	name := vars["name"]
+	name := r.PathValue("name")
 
 	successMessage, failure := commands.DeleteTopic(name)
 	if failure != nil {
