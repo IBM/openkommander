@@ -1,13 +1,13 @@
 package api
 
 import (
-	"github.com/gorilla/mux"
+	"net/http"
 )
 
-func NewRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.HandleFunc("{broker}/topics", CreateTopicHandler).Methods("POST")
-	r.HandleFunc("{broker}/topics", ListTopicsHandler).Methods("GET")
-	r.HandleFunc("{broker}/topics/{name}", DeleteTopicHandler).Methods("DELETE")
+func NewRouter() *http.ServeMux {
+	r := http.NewServeMux()
+	r.HandleFunc("POST /{broker}/topics", CreateTopicHandler)
+	r.HandleFunc("GET /{broker}/topics", ListTopicsHandler)
+	r.HandleFunc("DELETE /{broker}/topics/{name}", DeleteTopicHandler)
 	return r
 }
