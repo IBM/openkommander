@@ -113,25 +113,25 @@ func NewServer(port string) (*Server, error) {
 		startTime:   time.Now(),
 	}
 
-	mux := http.NewServeMux()
+	router := http.NewServeMux()
 
 	// Topics endpoint supports GET, POST, DELETE
-	mux.HandleFunc("GET /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
-	mux.HandleFunc("POST /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
-	mux.HandleFunc("DELETE /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
+	router.HandleFunc("GET /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
+	router.HandleFunc("POST /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
+	router.HandleFunc("DELETE /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
 
 	// Brokers endpoint supports GET, POST
-	mux.HandleFunc("GET /api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
-	mux.HandleFunc("POST /api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
+	router.HandleFunc("GET /api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
+	router.HandleFunc("POST /api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
 
 	// Metrics/messages/minute endpoint supports GET only
-	mux.HandleFunc("GET /api/v1/{broker}/metrics/messages/minute", wrapWithLogging(s.handleMessagesPerMinute))
+	router.HandleFunc("GET /api/v1/{broker}/metrics/messages/minute", wrapWithLogging(s.handleMessagesPerMinute))
 
 	// Status endpoint supports GET only
-	mux.HandleFunc("GET /api/v1/{broker}/status", wrapWithLogging(s.handleStatus))
+	router.HandleFunc("GET /api/v1/{broker}/status", wrapWithLogging(s.handleStatus))
 
 	// Health endpoint supports GET only
-	mux.HandleFunc("GET /api/v1/{broker}/health", wrapWithLogging(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /api/v1/{broker}/health", wrapWithLogging(func(w http.ResponseWriter, r *http.Request) {
 		response := Response{
 			Status:  "ok",
 			Message: "Health check successful",
@@ -141,9 +141,9 @@ func NewServer(port string) (*Server, error) {
 
 	frontendDir := constants.OpenKommanderFolder + "/frontend"
 	fileServer := http.FileServer(http.Dir(frontendDir))
-	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	router.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		filePath := frontendDir + r.URL.Path
 		if _, err := os.Stat(filePath); err == nil {
 			http.ServeFile(w, r, filePath)
@@ -161,7 +161,7 @@ func NewServer(port string) (*Server, error) {
 
 	s.httpServer = &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: router,
 	}
 
 	return s, nil
