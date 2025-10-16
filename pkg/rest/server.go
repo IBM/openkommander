@@ -116,28 +116,19 @@ func NewServer(port string) (*Server, error) {
 	router := http.NewServeMux()
 
 	// Topics endpoint supports GET, POST, DELETE
-	router.HandleFunc("GET /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
-	router.HandleFunc("POST /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
-	router.HandleFunc("DELETE /api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
+	router.HandleFunc("/api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
 
 	// Brokers endpoint supports GET, POST
-	router.HandleFunc("GET /api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
-	router.HandleFunc("POST /api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
+	router.HandleFunc("/api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
 
 	// Metrics/messages/minute endpoint supports GET only
-	router.HandleFunc("GET /api/v1/{broker}/metrics/messages/minute", wrapWithLogging(s.handleMessagesPerMinute))
+	router.HandleFunc("/api/v1/{broker}/metrics/messages/minute", wrapWithLogging(s.handleMessagesPerMinute))
 
 	// Status endpoint supports GET only
-	router.HandleFunc("GET /api/v1/{broker}/status", wrapWithLogging(s.handleStatus))
+	router.HandleFunc("/api/v1/{broker}/status", wrapWithLogging(s.handleStatus))
 
 	// Health endpoint supports GET only
-	router.HandleFunc("GET /api/v1/{broker}/health", wrapWithLogging(func(w http.ResponseWriter, r *http.Request) {
-		response := Response{
-			Status:  "ok",
-			Message: "Health check successful",
-		}
-		sendJSON(w, http.StatusOK, response)
-	}))
+	router.HandleFunc("/api/v1/{broker}/health", wrapWithLogging(s.handleHealth))
 
 	frontendDir := constants.OpenKommanderFolder + "/frontend"
 	fileServer := http.FileServer(http.Dir(frontendDir))
@@ -239,6 +230,15 @@ func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status 
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
 	broker := r.PathValue("broker")
 
 	status, err := createNewClient(w, r, s)
@@ -307,7 +307,12 @@ func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		s.deleteTopic(w, r)
 	default:
-		sendError(w, "Method not allowed", fmt.Errorf("method %s not allowed", r.Method))
+		logger.Warn("Method not allowed for topics endpoint", "method", r.Method, "broker", broker)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
 	}
 }
 
@@ -320,7 +325,11 @@ func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
 		s.getBrokers(w, r)
 	default:
 		logger.Warn("Method not allowed for brokers endpoint", "method", r.Method, "broker", broker)
-		sendError(w, "Method not allowed", fmt.Errorf("method %s not allowed", r.Method))
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
 	}
 }
 
@@ -540,6 +549,15 @@ var consumedHistory = make(map[string][]OffsetHistoryEntry)
 
 // Handler for messages per minute
 func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
 	broker := r.PathValue("broker")
 
 	status, err := createNewClient(w, r, s)
@@ -685,4 +703,21 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 	})
 	logger.Info("Successfully calculated message metrics", "broker", broker, "total_topics", len(counts)-1, "total_produced", totalAllProduced, "total_consumed", totalAllConsumed)
 	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: counts})
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
+	response := Response{
+		Status:  "ok",
+		Message: "Health check successful",
+	}
+	sendJSON(w, http.StatusOK, response)
 }
