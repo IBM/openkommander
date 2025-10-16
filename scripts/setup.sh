@@ -255,17 +255,52 @@ install_with_container() {
     fi
     
     # Check if we're in the repo directory
-    if [ ! -f "docker-compose.dev.yml" ]; then
-        print_error "docker-compose.dev.yml not found. This script must be run from the repository root."
+    if [ ! -f "docker-compose.dev.yml" ] || [ ! -f "docker-compose.kafka.yml" ]; then
+        print_error "Required compose files not found. This script must be run from the repository root."
+        print_info "Expected files: docker-compose.dev.yml, docker-compose.kafka.yml"
         exit 1
     fi
     
     print_info "Using compose command: $compose_cmd"
     
-    # Start containers
-    print_info "Starting containers..."
+    # Start Kafka clusters first
+    print_info "Starting Kafka clusters (3 clusters)..."
+    if ! $compose_cmd -f docker-compose.kafka.yml up -d; then
+        print_error "Failed to start Kafka clusters"
+        print_info "Try checking if ports 9092, 9095, 9098 are already in use"
+        exit 1
+    fi
+    
+    print_success "Kafka clusters started successfully!"
+    print_info "Kafka clusters available at:"
+    print_info "  - Cluster 1: localhost:9092"
+    print_info "  - Cluster 2: localhost:9095"
+    print_info "  - Cluster 3: localhost:9098"
+    
+    # Wait for Kafka clusters to be ready
+    print_info "Waiting for Kafka clusters to be ready..."
+    local max_wait=120
+    local wait_time=0
+    
+    while [ $wait_time -lt $max_wait ]; do
+        if $compose_cmd -f docker-compose.kafka.yml exec -T kafka-cluster1 kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+            print_success "Kafka cluster 1 is ready!"
+            break
+        fi
+        sleep 5
+        wait_time=$((wait_time + 5))
+        print_info "Waiting for Kafka... ($wait_time/${max_wait}s)"
+    done
+    
+    if [ $wait_time -ge $max_wait ]; then
+        print_warning "Kafka took longer than expected to be ready, continuing anyway..."
+    fi
+    
+    # Start application containers
+    print_info "Starting application..."
     if ! $compose_cmd -f docker-compose.dev.yml up --build -d; then
-        print_error "Failed to start containers"
+        print_error "Failed to start application containers"
+        print_info "Kafka clusters are still running. Check application logs for details."
         exit 1
     fi
     
@@ -288,10 +323,24 @@ install_with_container() {
     fi
     
     print_success "Application installed in $runtime container!"
-    print_info "Container services are running. You can:"
-    print_info "  - View logs: make container-logs"
+    print_success "Multi-cluster Kafka environment ready!"
+    print_info ""
+    print_info "🎯 Available Kafka Clusters:"
+    print_info "  • Cluster 1: localhost:9092"
+    print_info "  • Cluster 2: localhost:9095" 
+    print_info "  • Cluster 3: localhost:9098"
+    print_info ""
+    print_info "📋 Management Commands:"
+    print_info "  - View app logs: make container-logs"
+    print_info "  - View Kafka logs: make container-kafka-logs"
     print_info "  - Execute into container: make container-exec"
-    print_info "  - Stop containers: make container-stop"
+    print_info "  - Stop all services: make container-stop"
+    print_info "  - Stop only Kafka: make container-kafka-stop"
+    print_info ""
+    print_info "🧪 Test Multi-Cluster Setup:"
+    print_info "  ok cluster add cluster1 --bootstrap-server localhost:9092"
+    print_info "  ok cluster add cluster2 --bootstrap-server localhost:9095"
+    print_info "  ok cluster add cluster3 --bootstrap-server localhost:9098"
     
     # # Ask if user wants to exec into container
     # echo
@@ -331,12 +380,27 @@ show_completion() {
             print_info "Run '$BINARY_NAME --help' to get started."
             ;;
         "docker"|"podman")
-            print_success "OpenKommander is running in $install_type containers."
-            print_info "Available commands:"
+            print_success "OpenKommander and Kafka clusters are running in $install_type containers."
+            print_info ""
+            print_info "Kafka Clusters Available:"
+            print_info "  • Cluster 1: localhost:9092 (kafka-cluster-1)"
+            print_info "  • Cluster 2: localhost:9095 (kafka-cluster-2)" 
+            print_info "  • Cluster 3: localhost:9098 (kafka-cluster-3)"
+            print_info ""
+            print_info "Container Management Commands:"
             print_info "  make container-logs    # View application logs"
             print_info "  make container-exec    # Execute into container"
             print_info "  make container-stop    # Stop all containers"
             print_info "  make container-restart # Restart containers"
+            print_info ""
+            print_info "Kafka Management Commands:"
+            print_info "  make kafka-up          # Start Kafka clusters"
+            print_info "  make kafka-down        # Stop Kafka clusters"
+            print_info "  make kafka-logs        # View Kafka logs"
+            print_info ""
+            print_info "Test Multi-cluster Setup:"
+            print_info "  $BINARY_NAME cluster list              # List all clusters"
+            print_info "  $BINARY_NAME topic create test-topic   # Create topic on default cluster"
             ;;
     esac
     
