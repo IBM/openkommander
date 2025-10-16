@@ -127,9 +127,6 @@ func NewServer(port string) (*Server, error) {
 	// Status endpoint supports GET only
 	router.HandleFunc("/api/v1/{broker}/status", wrapWithLogging(s.handleStatus))
 
-	// Health endpoint supports GET only
-	router.HandleFunc("/api/v1/{broker}/health", wrapWithLogging(s.handleHealth))
-
 	frontendDir := constants.OpenKommanderFolder + "/frontend"
 	fileServer := http.FileServer(http.Dir(frontendDir))
 	router.Handle("/static/", http.StripPrefix("/static/", fileServer))
@@ -703,21 +700,4 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 	})
 	logger.Info("Successfully calculated message metrics", "broker", broker, "total_topics", len(counts)-1, "total_produced", totalAllProduced, "total_consumed", totalAllConsumed)
 	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: counts})
-}
-
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		sendJSON(w, http.StatusMethodNotAllowed, Response{
-			Status:  "error",
-			Message: fmt.Sprintf("Method %s not allowed", r.Method),
-		})
-		return
-	}
-
-	response := Response{
-		Status:  "ok",
-		Message: "Health check successful",
-	}
-	sendJSON(w, http.StatusOK, response)
 }

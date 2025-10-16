@@ -58,8 +58,8 @@ const apiRequest = async (endpoint, options = {}) => {
 
 // API endpoints
 export const api = {
-  // Health check
-  getHealth: () => apiRequest('health'),
+  // REST API status check
+  getStatus: () => apiRequest('status'),
 
   // Metrics
   getMessagePerMinute: () => apiRequest('metrics/messages/minute'),

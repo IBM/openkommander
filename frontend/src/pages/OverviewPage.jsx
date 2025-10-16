@@ -9,7 +9,7 @@ const OverviewPage = () => {
   const [metrics, setMetrics] = useState({
     brokers: 0,
     topics: 0,
-    health: 'Unknown',
+    status: 'Unknown',
     messagesPerSecond: 0
   });
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
@@ -23,8 +23,8 @@ const OverviewPage = () => {
     const fetchMetrics = async () => {
       setLoading(true);
       try {
-        // Get health status
-        const health = await api.getHealth();
+        // Get REST API status
+        const status = await api.getStatus();
 
         // Get brokers count
         const brokers = await api.getBrokers();
@@ -49,7 +49,7 @@ const OverviewPage = () => {
         const metricsData = {
           brokers: brokers.length,
           topics: topics.length,
-          health: health.status || 'Unknown',
+          status: status.status || 'Unknown',
           messagesPerMinute: totalMessages || 0,
         };
 
@@ -72,7 +72,7 @@ const OverviewPage = () => {
         if (!metricloading) {
           setMetricLoading(true);
           try {
-            const health = await api.getHealth();
+            const status = await api.getStatus();
             const brokers = await api.getBrokers();
             const topics = await api.getTopics();
             const messagesPerMinute = await api.getMessagePerMinute();
@@ -82,7 +82,7 @@ const OverviewPage = () => {
             const metricsData = {
               brokers: brokers.length,
               topics: topics.length,
-              health: health.status || 'Unknown',
+              status: status.status || 'Unknown',
               messagesPerMinute: totalMessages || 0,
             };
 
