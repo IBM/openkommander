@@ -14,8 +14,13 @@ import (
 	"github.com/IBM/openkommander/pkg/constants"
 	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/sarama"
-	"github.com/gorilla/mux"
 )
+
+func wrapWithLogging(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		LoggingMiddleware(http.HandlerFunc(fn)).ServeHTTP(w, r)
+	}
+}
 
 type Server struct {
 	httpServer  *http.Server
@@ -107,31 +112,34 @@ func NewServer(port string) (*Server, error) {
 		kafkaClient: nil,
 		startTime:   time.Now(),
 	}
-	router := mux.NewRouter()
-	router.Use(LoggingMiddleware)
-	router.HandleFunc("/api/v1/{broker}/status", s.handleStatus)
-	router.HandleFunc("/api/v1/{broker}/topics", s.handleTopics)
-	router.HandleFunc("/api/v1/{broker}/brokers", s.handleBrokers)
-	router.HandleFunc("/api/v1/{broker}/metrics/messages/minute", s.handleMessagesPerMinute)
-	router.HandleFunc("/api/v1/{broker}/health", func(w http.ResponseWriter, r *http.Request) {
-		response := Response{
-			Status:  "ok",
-			Message: "Health check successful",
-		}
-		sendJSON(w, http.StatusOK, response)
-	})
+
+	router := http.NewServeMux()
+
+	// Topics endpoint supports GET, POST, DELETE
+	router.HandleFunc("/api/v1/{broker}/topics", wrapWithLogging(s.handleTopics))
+
+	// Brokers endpoint supports GET, POST
+	router.HandleFunc("/api/v1/{broker}/brokers", wrapWithLogging(s.handleBrokers))
+
+	// Metrics/messages/minute endpoint supports GET only
+	router.HandleFunc("/api/v1/{broker}/metrics/messages/minute", wrapWithLogging(s.handleMessagesPerMinute))
+
+	// Status endpoint supports GET only
+	router.HandleFunc("/api/v1/{broker}/status", wrapWithLogging(s.handleStatus))
+
+	// Health endpoint supports GET only
+	router.HandleFunc("/api/v1/{broker}/health", wrapWithLogging(s.handleHealth))
 
 	frontendDir := constants.OpenKommanderFolder + "/frontend"
 	fileServer := http.FileServer(http.Dir(frontendDir))
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fileServer))
+	router.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
-	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		filePath := frontendDir + r.URL.Path
 		if _, err := os.Stat(filePath); err == nil {
 			http.ServeFile(w, r, filePath)
 			return
 		}
-
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
 			http.ServeFile(w, r, indexPath)
@@ -198,8 +206,7 @@ func StartRESTServer(port string) {
 }
 
 func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status bool, err error) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 
 	logger.Kafka("Creating new Kafka client", broker, "connect", "client_addr", r.RemoteAddr)
 
@@ -223,8 +230,16 @@ func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status 
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
+	broker := r.PathValue("broker")
 
 	status, err := createNewClient(w, r, s)
 	if err != nil {
@@ -264,8 +279,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 
 	status, err := createNewClient(w, r, s)
 	if err != nil {
@@ -293,13 +307,17 @@ func (s *Server) handleTopics(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		s.deleteTopic(w, r)
 	default:
-		sendError(w, "Method not allowed", fmt.Errorf("method %s not allowed", r.Method))
+		logger.Warn("Method not allowed for topics endpoint", "method", r.Method, "broker", broker)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
 	}
 }
 
 func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 	switch r.Method {
 	case http.MethodPost:
 		s.createBroker(w, r)
@@ -307,7 +325,11 @@ func (s *Server) handleBrokers(w http.ResponseWriter, r *http.Request) {
 		s.getBrokers(w, r)
 	default:
 		logger.Warn("Method not allowed for brokers endpoint", "method", r.Method, "broker", broker)
-		sendError(w, "Method not allowed", fmt.Errorf("method %s not allowed", r.Method))
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
 	}
 }
 
@@ -322,8 +344,7 @@ func (s *Server) createBroker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getBrokers(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 
 	status, err := createNewClient(w, r, s)
 	if err != nil {
@@ -369,8 +390,7 @@ func (s *Server) getBrokers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 	admin, err := sarama.NewClusterAdminFromClient(s.kafkaClient)
 
 	if err != nil {
@@ -411,8 +431,7 @@ func (s *Server) listTopics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 
 	var req TopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -452,8 +471,7 @@ func (s *Server) createTopic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteTopic(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	broker := r.PathValue("broker")
 
 	var req TopicRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -531,8 +549,16 @@ var consumedHistory = make(map[string][]OffsetHistoryEntry)
 
 // Handler for messages per minute
 func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	broker := vars["broker"]
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
+	broker := r.PathValue("broker")
 
 	status, err := createNewClient(w, r, s)
 	if err != nil {
@@ -677,4 +703,21 @@ func (s *Server) handleMessagesPerMinute(w http.ResponseWriter, r *http.Request)
 	})
 	logger.Info("Successfully calculated message metrics", "broker", broker, "total_topics", len(counts)-1, "total_produced", totalAllProduced, "total_consumed", totalAllConsumed)
 	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: counts})
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
+	response := Response{
+		Status:  "ok",
+		Message: "Health check successful",
+	}
+	sendJSON(w, http.StatusOK, response)
 }

@@ -4,7 +4,6 @@ go 1.24.0
 
 require (
 	github.com/IBM/sarama v1.46.2
-	github.com/gorilla/mux v1.8.1
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/spf13/cobra v1.10.1
 )
