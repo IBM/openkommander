@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -136,16 +137,82 @@ func NewServer(port string) (*Server, error) {
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		filePath := frontendDir + r.URL.Path
+		// Serve static files directly if they exist
 		if _, err := os.Stat(filePath); err == nil {
+			// Only allow GET
+			if r.Method != http.MethodGet {
+				w.Header().Set("Allow", http.MethodGet)
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+				logger.Info("Method Not Allowed",
+					"path", r.URL.Path,
+					"method", r.Method,
+					"remote_addr", r.RemoteAddr,
+				)
+				return
+			}
 			http.ServeFile(w, r, filePath)
 			return
 		}
+
+		// API & static routes get backend 404
+		if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/static") {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+			return
+		}
+
+		// For frontend routes, serve index.html with 200 (normal)
+		allowedFrontendRoutes := []string{
+			"/",
+			"/overview",
+			"/topics",
+			"/brokers",
+			"/consumer-groups",
+		}
+		if slices.Contains(allowedFrontendRoutes, r.URL.Path) {
+			indexPath := frontendDir + "/index.html"
+			if _, err := os.Stat(indexPath); err == nil {
+				// Only allow GET
+				if r.Method != http.MethodGet {
+					w.Header().Set("Allow", http.MethodGet)
+					http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+					logger.Info("Method Not Allowed",
+						"path", r.URL.Path,
+						"method", r.Method,
+						"remote_addr", r.RemoteAddr,
+					)
+					return
+				}
+				http.ServeFile(w, r, indexPath)
+				return
+			}
+		}
+
+		// For unknown frontend routes — serve index.html but mark it as 404
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
+			// Only allow GET
+			if r.Method != http.MethodGet {
+				w.Header().Set("Allow", http.MethodGet)
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+				logger.Info("Method Not Allowed",
+					"path", r.URL.Path,
+					"method", r.Method,
+					"remote_addr", r.RemoteAddr,
+				)
+				return
+			}
+			// // Serve index.html with 404 so React NotFoundPage renders
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusNotFound)
 			http.ServeFile(w, r, indexPath)
-		} else {
-			http.NotFound(w, r)
+			return
 		}
+
+		// Fallback in case index.html missing
+		http.Error(w, "404 Not Found", http.StatusNotFound)
 	})
 
 	logger.Info("Serving frontend", "directory", frontendDir)
