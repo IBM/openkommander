@@ -5,21 +5,23 @@ import OverviewPage from './pages/OverviewPage';
 import TopicsPage from './pages/TopicsPage';
 import ConsumerGroupsPage from './pages/ConsumerGroupsPage';
 import BrokersPage from './pages/BrokersPage';
+import NotFoundPage from './pages/NotFoundPage';
 import './App.scss';
 
 function App() {
   return (
     <Router>
       <Theme theme="g100">
-        <MainLayout>
-          <Routes>
+        <Routes>
+          <Route element={<MainLayout />}>
             <Route path="/" element={<Navigate to="/overview" replace />} />
             <Route path="/overview" element={<OverviewPage />} />
             <Route path="/topics" element={<TopicsPage />} />
             <Route path="/consumer-groups" element={<ConsumerGroupsPage />} />
             <Route path="/brokers" element={<BrokersPage />} />
-          </Routes>
-        </MainLayout>
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
       </Theme>
     </Router>
   );
