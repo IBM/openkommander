@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -107,6 +108,25 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+func enforceMethod(w http.ResponseWriter, r *http.Request, allowedMethods []string) bool {
+	for _, method := range allowedMethods {
+		if r.Method == method {
+			return true
+		}
+	}
+
+	// Join allowed methods for header
+	w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
+	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+	logger.Info("Method Not Allowed",
+		"path", r.URL.Path,
+		"method", r.Method,
+		"remote_addr", r.RemoteAddr,
+	)
+	return false
+}
+
 func NewServer(port string) (*Server, error) {
 	s := &Server{
 		kafkaClient: nil,
@@ -136,16 +156,35 @@ func NewServer(port string) (*Server, error) {
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		filePath := frontendDir + r.URL.Path
+
+		// Serve static files directly if they exist
 		if _, err := os.Stat(filePath); err == nil {
+			if !enforceMethod(w, r, []string{http.MethodGet}) {
+				return
+			}
 			http.ServeFile(w, r, filePath)
 			return
 		}
+
+		// Block unmatched API/static routes
+		if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/static") {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+			return
+		}
+
+		// Serve index.html for all other frontend GET requests and let frontend handle routing
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
+			if !enforceMethod(w, r, []string{http.MethodGet}) {
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			http.ServeFile(w, r, indexPath)
-		} else {
-			http.NotFound(w, r)
+			return
 		}
+
+		// Fallback in case index.html missing
+		http.Error(w, "404 Not Found", http.StatusNotFound)
 	})
 
 	logger.Info("Serving frontend", "directory", frontendDir)
