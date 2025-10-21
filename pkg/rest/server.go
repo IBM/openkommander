@@ -108,6 +108,22 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
+func enforceGET(w http.ResponseWriter, r *http.Request) bool {
+    if r.Method != http.MethodGet {
+        w.Header().Set("Allow", http.MethodGet)
+        http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+        logger.Info("Method Not Allowed",
+            "path", r.URL.Path,
+            "method", r.Method,
+            "remote_addr", r.RemoteAddr,
+        )
+        return false
+    }
+    return true
+}
+
+
 func NewServer(port string) (*Server, error) {
 	s := &Server{
 		kafkaClient: nil,
@@ -139,16 +155,7 @@ func NewServer(port string) (*Server, error) {
 		filePath := frontendDir + r.URL.Path
 		// Serve static files directly if they exist
 		if _, err := os.Stat(filePath); err == nil {
-			// Only allow GET
-			if r.Method != http.MethodGet {
-				w.Header().Set("Allow", http.MethodGet)
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-
-				logger.Info("Method Not Allowed",
-					"path", r.URL.Path,
-					"method", r.Method,
-					"remote_addr", r.RemoteAddr,
-				)
+			if !enforceGET(w, r) {
 				return
 			}
 			http.ServeFile(w, r, filePath)
@@ -172,18 +179,9 @@ func NewServer(port string) (*Server, error) {
 		if slices.Contains(allowedFrontendRoutes, r.URL.Path) {
 			indexPath := frontendDir + "/index.html"
 			if _, err := os.Stat(indexPath); err == nil {
-				// Only allow GET
-				if r.Method != http.MethodGet {
-					w.Header().Set("Allow", http.MethodGet)
-					http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-
-					logger.Info("Method Not Allowed",
-						"path", r.URL.Path,
-						"method", r.Method,
-						"remote_addr", r.RemoteAddr,
-					)
+				if !enforceGET(w, r) {
 					return
-				}
+				}	
 				http.ServeFile(w, r, indexPath)
 				return
 			}
@@ -192,19 +190,10 @@ func NewServer(port string) (*Server, error) {
 		// For unknown frontend routes — serve index.html but mark it as 404
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
-			// Only allow GET
-			if r.Method != http.MethodGet {
-				w.Header().Set("Allow", http.MethodGet)
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-
-				logger.Info("Method Not Allowed",
-					"path", r.URL.Path,
-					"method", r.Method,
-					"remote_addr", r.RemoteAddr,
-				)
+			if !enforceGET(w, r) {
 				return
 			}
-			// // Serve index.html with 404 so React NotFoundPage renders
+			// Serve index.html with 404 so React NotFoundPage renders
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusNotFound)
 			http.ServeFile(w, r, indexPath)
