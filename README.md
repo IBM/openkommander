@@ -103,6 +103,7 @@ All commands start with prefix `ok`
 | `produce`    | Produce messages to a topic         | `ok produce [TOPIC NAME] --msg/-m <message> [flags]`               |
 | `server`     | REST server commands                | `ok server <subcommand>`                                            |
 | `topic`      | Topic management commands           | `ok topic <subcommand>`                                             |
+| `cluster`    | Cluster management commands         | `ok cluster <subcommand>`                                           |
 | `broker`     | Broker management commands          | `ok broker <subcommand>`                                            |
 | `help`       | Display available commands          | `ok help`                                                           |
 
@@ -124,6 +125,20 @@ OpenKommander provides comprehensive topic management commands:
 
 **Topic Update Flags:**
 - `-p, --new-partitions`: New partition count (required)
+
+### Cluster Management
+
+OpenKommander provides cluster management commands to view available Kafka clusters:
+
+| Command                | Description                         | Usage                    |
+| ---------------------- | ----------------------------------- | ------------------------ |
+| `ok cluster list`     | List all available clusters        | `ok cluster list`        |
+
+The cluster list command displays information about connected Kafka brokers/clusters including:
+- **Cluster ID**: The broker ID within the cluster
+- **Address**: The broker's network address (host:port)  
+- **Status**: Connection status (Connected/Disconnected)
+- **Rack**: The rack assignment for the broker (if configured)
 
 ### Message Production
 

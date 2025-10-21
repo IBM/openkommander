@@ -382,10 +382,15 @@ show_completion() {
         "docker"|"podman")
             print_success "OpenKommander and Kafka clusters are running in $install_type containers."
             print_info ""
-            print_info "Kafka Clusters Available:"
-            print_info "  • Cluster 1: localhost:9092 (kafka-cluster-1)"
-            print_info "  • Cluster 2: localhost:9095 (kafka-cluster-2)" 
-            print_info "  • Cluster 3: localhost:9098 (kafka-cluster-3)"
+            print_info "Kafka Clusters Available (External Access):"
+            print_info "  • Cluster 1: localhost:9092 (kafka-cluster1)"
+            print_info "  • Cluster 2: localhost:9095 (kafka-cluster2)" 
+            print_info "  • Cluster 3: localhost:9098 (kafka-cluster3)"
+            print_info ""
+            print_info "Container-to-Container Access (for apps in containers):"
+            print_info "  • Cluster 1: kafka-cluster1:9093"
+            print_info "  • Cluster 2: kafka-cluster2:9093"
+            print_info "  • Cluster 3: kafka-cluster3:9093"
             print_info ""
             print_info "Container Management Commands:"
             print_info "  make container-logs    # View application logs"
@@ -397,10 +402,6 @@ show_completion() {
             print_info "  make kafka-up          # Start Kafka clusters"
             print_info "  make kafka-down        # Stop Kafka clusters"
             print_info "  make kafka-logs        # View Kafka logs"
-            print_info ""
-            print_info "Test Multi-cluster Setup:"
-            print_info "  $BINARY_NAME cluster list              # List all clusters"
-            print_info "  $BINARY_NAME topic create test-topic   # Create topic on default cluster"
             ;;
     esac
     

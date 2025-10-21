@@ -11,8 +11,8 @@ services:
     networks:
       - kafka-net
     environment:
-      - KAFKA_BROKERS=localhost:9092,localhost:9095,localhost:9098  # All 3 clusters
-      - KAFKA_BROKER=localhost:9092     # Primary cluster for backward compatibility
+      - KAFKA_BROKERS=kafka-cluster1:9093,kafka-cluster2:9093,kafka-cluster3:9093
+      - KAFKA_BROKER=kafka-cluster1:9093
       - LOG_LEVEL=debug
     # Note: Remove depends_on since Kafka is in separate compose file
     # Use external_links or start Kafka separately
