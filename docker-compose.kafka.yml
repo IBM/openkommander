@@ -1,0 +1,194 @@
+services:
+  # Kafka Cluster 1
+  kafka-cluster1:
+    container_name: kafka-cluster1
+    image: bitnamilegacy/kafka:4.0.0
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+      - "9094:9094"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=CONTROLLER://0.0.0.0:9094,INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-cluster1:9093,EXTERNAL://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-cluster1:9094
+      
+      # Node configuration
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CLUSTER_ID=cluster1
+      
+      # Basic configuration
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      
+      # Performance settings for development
+      - KAFKA_CFG_NUM_PARTITIONS=3
+      - KAFKA_CFG_NUM_RECOVERY_THREADS_PER_DATA_DIR=1
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=1
+      
+      # Log retention settings for development
+      - KAFKA_CFG_LOG_RETENTION_HOURS=24
+      - KAFKA_CFG_LOG_RETENTION_BYTES=1073741824
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824
+      
+      # Auto-create topics for development
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
+      
+      # JVM heap settings for development
+      - KAFKA_HEAP_OPTS=-Xmx512m -Xms512m
+      
+      # Debug settings
+      - BITNAMI_DEBUG=yes
+      - KAFKA_CFG_LOG_LEVEL=INFO
+    volumes:
+      - kafka_cluster1_data:/bitnami/kafka
+    networks:
+      - kafka-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Kafka Cluster 2
+  kafka-cluster2:
+    container_name: kafka-cluster2
+    image: bitnamilegacy/kafka:4.0.0
+    ports:
+      - "9095:9092"
+      - "9096:9093"
+      - "9097:9094"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=CONTROLLER://0.0.0.0:9094,INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-cluster2:9093,EXTERNAL://localhost:9095
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-cluster2:9094
+      
+      # Node configuration
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CLUSTER_ID=cluster2
+      
+      # Basic configuration
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      
+      # Performance settings for development
+      - KAFKA_CFG_NUM_PARTITIONS=3
+      - KAFKA_CFG_NUM_RECOVERY_THREADS_PER_DATA_DIR=1
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=1
+      
+      # Log retention settings for development
+      - KAFKA_CFG_LOG_RETENTION_HOURS=24
+      - KAFKA_CFG_LOG_RETENTION_BYTES=1073741824
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824
+      
+      # Auto-create topics for development
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
+      
+      # JVM heap settings for development
+      - KAFKA_HEAP_OPTS=-Xmx512m -Xms512m
+      
+      # Debug settings
+      - BITNAMI_DEBUG=yes
+      - KAFKA_CFG_LOG_LEVEL=INFO
+    volumes:
+      - kafka_cluster2_data:/bitnami/kafka
+    networks:
+      - kafka-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Kafka Cluster 3
+  kafka-cluster3:
+    container_name: kafka-cluster3
+    image: bitnamilegacy/kafka:4.0.0
+    ports:
+      - "9098:9092"
+      - "9099:9093"
+      - "9100:9094"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_LISTENERS=CONTROLLER://0.0.0.0:9094,INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-cluster3:9093,EXTERNAL://localhost:9098
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-cluster3:9094
+      
+      # Node configuration
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CLUSTER_ID=cluster3
+      
+      # Basic configuration
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      
+      # Performance settings for development
+      - KAFKA_CFG_NUM_PARTITIONS=3
+      - KAFKA_CFG_NUM_RECOVERY_THREADS_PER_DATA_DIR=1
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_MIN_INSYNC_REPLICAS=1
+      
+      # Log retention settings for development
+      - KAFKA_CFG_LOG_RETENTION_HOURS=24
+      - KAFKA_CFG_LOG_RETENTION_BYTES=1073741824
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824
+      
+      # Auto-create topics for development
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
+      
+      # JVM heap settings for development
+      - KAFKA_HEAP_OPTS=-Xmx512m -Xms512m
+      
+      # Debug settings
+      - BITNAMI_DEBUG=yes
+      - KAFKA_CFG_LOG_LEVEL=INFO
+    volumes:
+      - kafka_cluster3_data:/bitnami/kafka
+    networks:
+      - kafka-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  kafka-net:
+    driver: bridge
+    external: false
+    name: kafka-net
+
+volumes:
+  kafka_cluster1_data:
+  kafka_cluster2_data:
+  kafka_cluster3_data:

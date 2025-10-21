@@ -23,21 +23,45 @@ HOST_OS := $(shell go env GOOS)
 HOST_ARCH := $(shell go env GOARCH)
 
 container-start:
+	@echo "Starting Kafka clusters..."
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml up -d
+	@echo "Starting application..."
 	$(CONTAINER_CMD) -f docker-compose.dev.yml up --build -d
 
 container-stop:
+	@echo "Stopping application..."
 	$(CONTAINER_CMD) -f docker-compose.dev.yml down
+	@echo "Stopping Kafka clusters..."
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml down
 	make clean
 
 container-restart:
+	@echo "Restarting services..."
 	$(CONTAINER_CMD) -f docker-compose.dev.yml down
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml down
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml up -d
 	$(CONTAINER_CMD) -f docker-compose.dev.yml up --build -d
 
 container-logs:
-	$(CONTAINER_CMD) -f docker-compose.dev.yml logs -f
+	@echo "Application logs:"
+	$(CONTAINER_CMD) -f docker-compose.dev.yml logs -f app
+	@echo "Kafka logs:"
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml logs -f
+
+container-kafka-logs:
+	@echo "Kafka cluster logs:"
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml logs -f
 
 container-exec:
 	$(CONTAINER_CMD) -f docker-compose.dev.yml exec app bash
+
+container-kafka-start:
+	@echo "Starting only Kafka clusters..."
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml up -d
+
+container-kafka-stop:
+	@echo "Stopping only Kafka clusters..."
+	$(CONTAINER_CMD) -f docker-compose.kafka.yml down
 
 clean:
 	@echo "Cleaning up..."
@@ -107,4 +131,4 @@ test: test-clean test-coverage
 
 dev-run: setup build install
 
-.PHONY: dev clean setup build install test test-coverage test-coverage-report test-clean
+.PHONY: dev clean setup build install test test-coverage test-coverage-report test-clean container-start container-stop container-restart container-logs container-kafka-logs container-exec container-kafka-start container-kafka-stop
