@@ -108,9 +108,9 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func enforceGET(w http.ResponseWriter, r *http.Request) bool {
-    if r.Method != http.MethodGet {
-        w.Header().Set("Allow", http.MethodGet)
+func enforceMethod(w http.ResponseWriter, r *http.Request, allowedMethod string) bool {
+    if r.Method != allowedMethod {
+        w.Header().Set("Allow", allowedMethod)
         http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 
         logger.Info("Method Not Allowed",
@@ -155,7 +155,7 @@ func NewServer(port string) (*Server, error) {
 		filePath := frontendDir + r.URL.Path
 		// Serve static files directly if they exist
 		if _, err := os.Stat(filePath); err == nil {
-			if !enforceGET(w, r) {
+			if !enforceMethod(w, r, http.MethodGet) {
 				return
 			}
 			http.ServeFile(w, r, filePath)
@@ -179,9 +179,9 @@ func NewServer(port string) (*Server, error) {
 		if slices.Contains(allowedFrontendRoutes, r.URL.Path) {
 			indexPath := frontendDir + "/index.html"
 			if _, err := os.Stat(indexPath); err == nil {
-				if !enforceGET(w, r) {
+				if !enforceMethod(w, r, http.MethodGet) {
 					return
-				}	
+				}
 				http.ServeFile(w, r, indexPath)
 				return
 			}
@@ -190,7 +190,7 @@ func NewServer(port string) (*Server, error) {
 		// For unknown frontend routes — serve index.html but mark it as 404
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
-			if !enforceGET(w, r) {
+			if !enforceMethod(w, r, http.MethodGet) {
 				return
 			}
 			// Serve index.html with 404 so React NotFoundPage renders
