@@ -108,19 +108,23 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-func enforceMethod(w http.ResponseWriter, r *http.Request, allowedMethod string) bool {
-	if r.Method != allowedMethod {
-		w.Header().Set("Allow", allowedMethod)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-
-		logger.Info("Method Not Allowed",
-			"path", r.URL.Path,
-			"method", r.Method,
-			"remote_addr", r.RemoteAddr,
-		)
-		return false
+func enforceMethod(w http.ResponseWriter, r *http.Request, allowedMethods []string) bool {
+	for _, method := range allowedMethods {
+		if r.Method == method {
+			return true
+		}
 	}
-	return true
+
+	// Join allowed methods for header
+	w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
+	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+	logger.Info("Method Not Allowed",
+		"path", r.URL.Path,
+		"method", r.Method,
+		"remote_addr", r.RemoteAddr,
+	)
+	return false
 }
 
 func NewServer(port string) (*Server, error) {
@@ -155,7 +159,7 @@ func NewServer(port string) (*Server, error) {
 
 		// Serve static files directly if they exist
 		if _, err := os.Stat(filePath); err == nil {
-			if !enforceMethod(w, r, http.MethodGet) {
+			if !enforceMethod(w, r, []string{http.MethodGet}) {
 				return
 			}
 			http.ServeFile(w, r, filePath)
@@ -171,7 +175,7 @@ func NewServer(port string) (*Server, error) {
 		// Serve index.html for all other frontend GET requests and let frontend handle routing
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
-			if !enforceMethod(w, r, http.MethodGet) {
+			if !enforceMethod(w, r, []string{http.MethodGet}) {
 				return
 			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
