@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 env:
-  GO_VERSION: 1.23
+  GO_VERSION: 1.24
 
 jobs:
   test:
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.23]
+        go-version: [1.24]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -52,7 +52,7 @@ jobs:
 
         # TODO: Re-enable code coverage threshold checks
     #   - name: Check coverage threshold
-    #     if: matrix.go-version == '1.23'
+    #     if: matrix.go-version == '1.24'
     #     run: |
     #       COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
     #       echo "Current coverage: ${COVERAGE}%"
