@@ -44,7 +44,7 @@ container-restart:
 
 container-logs:
 	@echo "Application logs:"
-	$(CONTAINER_CMD) -f docker-compose.dev.yml logs -f app &
+	$(CONTAINER_CMD) -f docker-compose.dev.yml logs -f app
 	@echo "Kafka logs:"
 	$(CONTAINER_CMD) -f docker-compose.kafka.yml logs -f
 
