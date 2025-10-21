@@ -168,13 +168,12 @@ func NewServer(port string) (*Server, error) {
 			return
 		}
 
-		// Serve index.html for all other frontend GET requests
+		// Serve index.html for all other frontend GET requests and let frontend handle routing
 		indexPath := frontendDir + "/index.html"
 		if _, err := os.Stat(indexPath); err == nil {
 			if !enforceMethod(w, r, http.MethodGet) {
 				return
 			}
-			// Serve index.html and let frontend handle routing
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			http.ServeFile(w, r, indexPath)
 			return
