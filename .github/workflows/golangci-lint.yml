@@ -12,7 +12,7 @@ on:
       - cd-setup
 
 env:
-  GO_VERSION: 1.23
+  GO_VERSION: 1.24
   GOLANGCI_LINT_VERSION: v2.1.6
 
 jobs:
