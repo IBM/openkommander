@@ -155,19 +155,43 @@ func NewServer(port string) (*Server, error) {
 	router.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		filePath := frontendDir + r.URL.Path
+		// Sanitize requested path to prevent path traversal
+		requestedPath := r.URL.Path
+		// If the path contains ".." or backslashes, block it early
+		if strings.Contains(requestedPath, "..") || strings.Contains(requestedPath, "\\") {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+			return
+		}
+		// Construct absolute base directory
+		absFrontendDir, err := filepath.Abs(frontendDir)
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		// Join, clean, and resolve the absolute file path
+		joinedPath := filepath.Join(frontendDir, requestedPath)
+		absFilePath, err := filepath.Abs(joinedPath)
+		if err != nil {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+			return
+		}
+		// Make sure the result is within the frontendDir
+		if !strings.HasPrefix(absFilePath, absFrontendDir) {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+			return
+		}
 
 		// Serve static files directly if they exist
-		if _, err := os.Stat(filePath); err == nil {
+		if _, err := os.Stat(absFilePath); err == nil {
 			if !enforceMethod(w, r, []string{http.MethodGet}) {
 				return
 			}
-			http.ServeFile(w, r, filePath)
+			http.ServeFile(w, r, absFilePath)
 			return
 		}
 
 		// Block unmatched API/static routes
-		if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/static") {
+		if strings.HasPrefix(requestedPath, "/api") || strings.HasPrefix(requestedPath, "/static") {
 			http.Error(w, "404 Not Found", http.StatusNotFound)
 			return
 		}
