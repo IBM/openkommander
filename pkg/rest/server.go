@@ -254,15 +254,10 @@ func StartRESTServer(port string) {
 func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status bool, err error) {
 	broker := r.PathValue("broker")
 
-	if broker == "" {
-		broker = "kafka-cluster1:9093"
-	}
-
 	logger.Kafka("Creating new Kafka client", broker, "connect", "client_addr", r.RemoteAddr)
 
 	if broker == "" {
 		logger.Warn("Broker not specified in request", "url", r.URL.String())
-		sendError(w, "Broker not specified", nil)
 		return false, fmt.Errorf("broker not specified")
 	}
 	config := sarama.NewConfig()
@@ -270,7 +265,6 @@ func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status 
 	client, err := sarama.NewClient([]string{broker}, config)
 	if err != nil {
 		logger.Error("Failed to create Kafka client", "broker", broker, "error", err)
-		sendError(w, "Failed to create Kafka client", err)
 		return false, fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 

@@ -63,10 +63,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
   
-  /clusters/metadata:
+  /clusters/{clusterId}/metadata:
     get:
       summary: Get cluster metadata
-      description: Returns metadata about the current cluster
+      description: Returns metadata about the specified cluster
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          description: The ID of the cluster
+          schema:
+            type: string
       responses:
         '200':
           description: Cluster metadata
