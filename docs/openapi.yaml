@@ -37,6 +37,50 @@ paths:
                 items:
                   $ref: '#/components/schemas/BrokerInfo'
   
+  /clusters:
+    get:
+      summary: List clusters
+      description: Returns a list of available Kafka clusters/brokers
+      responses:
+        '200':
+          description: List of clusters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClusterInfo'
+        '404':
+          description: No clusters found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /clusters/metadata:
+    get:
+      summary: Get cluster metadata
+      description: Returns metadata about the current cluster
+      responses:
+        '200':
+          description: Cluster metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  data:
+                    $ref: '#/components/schemas/ClusterMetadata'
+  
   /topics:
     get:
       summary: List topics
@@ -348,6 +392,63 @@ components:
         in_sync_partitions:
           type: integer
           example: 10
+    
+    ClusterInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+          description: Unique identifier for the cluster/broker
+        address:
+          type: string
+          example: localhost:9092
+          description: Network address of the cluster/broker
+        status:
+          type: string
+          example: Connected
+          enum: [Connected, Disconnected]
+          description: Connection status of the cluster/broker
+        rack:
+          type: string
+          example: rack-1
+          description: Rack assignment for the broker (N/A if not configured)
+        connected:
+          type: boolean
+          example: true
+          description: Boolean indicating if the broker is currently connected
+    
+    ClusterMetadata:
+      type: object
+      properties:
+        broker_count:
+          type: integer
+          example: 3
+          description: Total number of brokers in the cluster
+        cluster_id:
+          type: string
+          example: openkommander-client
+          description: Client identifier for the cluster
+        brokers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int32
+                example: 1
+              address:
+                type: string
+                example: localhost:9092
+              connected:
+                type: boolean
+                example: true
+              rack:
+                type: string
+                example: rack-1
+          description: Detailed information about each broker in the cluster
     
     TopicInfo:
       type: object
