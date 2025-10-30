@@ -3,7 +3,7 @@ module github.com/IBM/openkommander
 go 1.24.0
 
 require (
-	github.com/IBM/sarama v1.46.2
+	github.com/IBM/sarama v1.46.3
 	github.com/jedib0t/go-pretty/v6 v6.6.9
 	github.com/spf13/cobra v1.10.1
 )
@@ -21,7 +21,7 @@ require (
 	github.com/jcmturner/gofork v1.7.6 // indirect
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
