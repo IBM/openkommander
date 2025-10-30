@@ -11,8 +11,8 @@ var (
 	OpenKommanderFolder         string
 	OpenKommanderConfigFilename string
 	KafkaVersion                                    = "3.9.0"
-	SaramaKafkaVersion          sarama.KafkaVersion = sarama.V3_9_0_0
-	KafkaBroker                                     = "kafka:9093"
+	SaramaKafkaVersion          sarama.KafkaVersion = sarama.V4_1_0_0
+	KafkaBroker                                     = "localhost:9092"
 )
 
 func init() {

@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/IBM/openkommander/internal/core/commands"
 	"github.com/IBM/openkommander/pkg/constants"
 	"github.com/IBM/openkommander/pkg/logger"
 	"github.com/IBM/sarama"
@@ -150,6 +151,12 @@ func NewServer(port string) (*Server, error) {
 	// Health endpoint supports GET only
 	router.HandleFunc("/api/v1/{broker}/health", wrapWithLogging(s.handleHealth))
 
+	// Clusters endpoint supports GET only
+	router.HandleFunc("/api/v1/clusters", wrapWithLogging(s.handleClusters))
+
+	// Cluster metadata endpoint supports GET only
+	router.HandleFunc("/api/v1/clusters/{clusterId}/metadata", wrapWithLogging(s.handleClusterMetadata))
+
 	frontendDir := constants.OpenKommanderFolder + "/frontend"
 	fileServer := http.FileServer(http.Dir(frontendDir))
 	router.Handle("/static/", http.StripPrefix("/static/", fileServer))
@@ -251,7 +258,6 @@ func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status 
 
 	if broker == "" {
 		logger.Warn("Broker not specified in request", "url", r.URL.String())
-		sendError(w, "Broker not specified", nil)
 		return false, fmt.Errorf("broker not specified")
 	}
 	config := sarama.NewConfig()
@@ -259,7 +265,6 @@ func createNewClient(w http.ResponseWriter, r *http.Request, s *Server) (status 
 	client, err := sarama.NewClient([]string{broker}, config)
 	if err != nil {
 		logger.Error("Failed to create Kafka client", "broker", broker, "error", err)
-		sendError(w, "Failed to create Kafka client", err)
 		return false, fmt.Errorf("failed to create Kafka client: %w", err)
 	}
 
@@ -759,4 +764,64 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		Message: "Health check successful",
 	}
 	sendJSON(w, http.StatusOK, response)
+}
+
+// Handler for clusters endpoint
+func (s *Server) handleClusters(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
+	// Use the command from internal/core/commands
+	clusters, failure := commands.ListClusters()
+	if failure != nil {
+		logger.Error("Failed to list clusters", "error", failure.Err)
+		sendError(w, "Failed to list clusters", failure.Err)
+		return
+	}
+
+	logger.Info("Successfully retrieved clusters", "cluster_count", len(clusters))
+	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: clusters})
+}
+
+// Handler for cluster metadata endpoint
+func (s *Server) handleClusterMetadata(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		sendJSON(w, http.StatusMethodNotAllowed, Response{
+			Status:  "error",
+			Message: fmt.Sprintf("Method %s not allowed", r.Method),
+		})
+		return
+	}
+
+	clusterId := r.PathValue("clusterId")
+
+	status, err := createNewClient(w, r, s)
+	if err != nil {
+		logger.Error("Failed to create Kafka client for cluster metadata operation", "clusterId", clusterId, "error", err)
+		sendError(w, "Failed to create Kafka client", err)
+		return
+	}
+	if !status {
+		logger.Error("Client creation failed for cluster metadata operation", "clusterId", clusterId)
+		sendError(w, "Failed to create Kafka client", fmt.Errorf("client creation failed"))
+		return
+	}
+
+	// Use the command from internal/core/commands
+	metadata, failure := commands.GetClusterMetadata()
+	if failure != nil {
+		logger.Error("Failed to get cluster metadata", "clusterId", clusterId, "error", failure.Err)
+		sendError(w, "Failed to get cluster metadata", failure.Err)
+		return
+	}
+
+	logger.Info("Successfully retrieved cluster metadata", "clusterId", clusterId)
+	sendJSON(w, http.StatusOK, Response{Status: "ok", Data: metadata})
 }
