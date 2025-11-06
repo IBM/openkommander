@@ -2,8 +2,9 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/IBM/openkommander/internal/core/commands"
+	"github.com/IBM/openkommander/pkg/session"
 )
 
 type ClusterCommandList struct{}
@@ -17,10 +18,15 @@ func (ClusterCommandList) GetParentCommand() *OkParentCmd {
 
 func (m ClusterCommandList) GetCommands() []*OkCmd {
 	return []*OkCmd{
-		{ // List cluster info
+		{ // List cluster connections
 			Use:   "list",
-			Short: "List all cluster info",
-			Run:   getClusterList,
+			Short: "List all cluster connections",
+			Run:   listClusterConnections,
+		},
+		{ // Select cluster
+			Use:   "select <cluster-name>",
+			Short: "Select active cluster",
+			Run:   selectCluster,
 		},
 	}
 }
@@ -29,26 +35,54 @@ func (ClusterCommandList) GetSubcommands() []CommandList {
 	return nil
 }
 
-func getClusterList(cmd cobraCmd, args cobraArgs) {
-	// Use the command from internal/core/commands
-	clusters, failure := commands.ListClusters()
-	if failure != nil {
-		fmt.Println(failure.Err)
+func listClusterConnections(cmd cobraCmd, args cobraArgs) {
+	clusters := session.GetClusterConnections()
+	activeCluster := session.GetActiveClusterName()
+
+	if len(clusters) == 0 {
+		fmt.Println("No cluster connections found.")
 		return
 	}
 
 	// Prepare table headers and rows
-	clusterHeaders := []string{"Cluster ID", "Address", "Status", "Rack"}
-	clusterRows := [][]interface{}{}
+	connectionHeaders := []string{"Name", "Status", "Brokers", "Version", "Active"}
+	connectionRows := [][]interface{}{}
 
 	for _, cluster := range clusters {
-		clusterRows = append(clusterRows, []interface{}{
-			cluster.ID,
-			cluster.Address,
-			cluster.Status,
-			cluster.Rack,
+		status := "Disconnected"
+		if cluster.IsAuthenticated {
+			status = "Connected"
+		}
+
+		active := "No"
+		if cluster.Name == activeCluster {
+			active = "Yes"
+		}
+
+		// Join broker addresses
+		brokersStr := strings.Join(cluster.Brokers, ", ")
+		if len(brokersStr) > 50 {
+			brokersStr = brokersStr[:47] + "..."
+		}
+
+		connectionRows = append(connectionRows, []interface{}{
+			cluster.Name,
+			status,
+			brokersStr,
+			cluster.Version,
+			active,
 		})
 	}
 
-	RenderTable("Available Clusters:", clusterHeaders, clusterRows)
+	RenderTable("Clusters:", connectionHeaders, connectionRows)
+}
+
+func selectCluster(cmd cobraCmd, args cobraArgs) {
+	if len(args) == 0 {
+		fmt.Println("Usage: ok cluster select <cluster-name>")
+		return
+	}
+
+	clusterName := args[0]
+	session.SelectCluster(clusterName)
 }
