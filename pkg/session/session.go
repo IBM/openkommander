@@ -345,7 +345,11 @@ func Login() {
 		fmt.Printf("Added new cluster connection: %s\n", nameInput)
 
 		// Close the test client
-		client.Close()
+		err := client.Close()
+
+		if err != nil {
+			logger.Error("Error closing client", "error", err)
+		}
 
 		// Save session
 		err = saveSession(nameInput)
@@ -392,7 +396,11 @@ func LoginWithParams(brokers []string, version string, clusterName string) (bool
 				currentSession.activeCluster = clusterName
 
 				// Close the test client
-				client.Close()
+				err = client.Close()
+
+				if err != nil {
+					logger.Error("Error closing client", "error", err)
+				}
 
 				// Save session
 				err = saveSession(clusterName)
@@ -408,7 +416,10 @@ func LoginWithParams(brokers []string, version string, clusterName string) (bool
 		currentSession.activeCluster = clusterName
 
 		// Close the test client
-		client.Close()
+		err = client.Close()
+		if err != nil {
+			logger.Error("Error closing client", "error", err)
+		}
 
 		// Save session
 		err = saveSession(clusterName)
@@ -442,11 +453,17 @@ func Logout(clusterName string) bool {
 				currentSession.activeCluster = ""
 				// Disconnect current client if any
 				if currentSession.client != nil {
-					currentSession.client.Close()
+					err := currentSession.client.Close()
+					if err != nil {
+						logger.Error("Error closing client", "error", err)
+					}
 					currentSession.client = nil
 				}
 				if currentSession.adminClient != nil {
-					currentSession.adminClient.Close()
+					err := currentSession.adminClient.Close()
+					if err != nil {
+						logger.Error("Error closing admin client", "error", err)
+					}
 					currentSession.adminClient = nil
 				}
 			}
@@ -507,11 +524,17 @@ func SelectCluster(clusterName string) {
 		if cluster.Name == clusterName {
 			// Disconnect from current cluster if any
 			if currentSession.client != nil {
-				currentSession.client.Close()
+				err := currentSession.client.Close()
+				if err != nil {
+					logger.Error("Error closing client", "error", err)
+				}
 				currentSession.client = nil
 			}
 			if currentSession.adminClient != nil {
-				currentSession.adminClient.Close()
+				err := currentSession.adminClient.Close()
+				if err != nil {
+					logger.Error("Error closing admin client", "error", err)
+				}
 				currentSession.adminClient = nil
 			}
 
