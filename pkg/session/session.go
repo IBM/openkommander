@@ -58,12 +58,20 @@ func (s *session) Info() string {
 }
 
 func (s *session) getActiveCluster() *ClusterConnection {
-	for i := range s.clusters {
-		if s.clusters[i].Name == s.activeCluster {
-			return &s.clusters[i]
-		}
+	idx := s.getActiveClusterIndex()
+	if idx >= 0 {
+		return &s.clusters[idx]
 	}
 	return nil
+}
+
+func (s *session) getActiveClusterIndex() int {
+	for i := range s.clusters {
+		if s.clusters[i].Name == s.activeCluster {
+			return i
+		}
+	}
+	return -1
 }
 
 func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
@@ -76,7 +84,10 @@ func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 		return nil, fmt.Errorf("no active cluster selected")
 	}
 
-	version, _ := sarama.ParseKafkaVersion(activeCluster.Version)
+	version, err := sarama.ParseKafkaVersion(activeCluster.Version)
+	if err != nil {
+		return nil, fmt.Errorf("invalid kafka version: %w", err)
+	}
 	client, err := cluster.NewCluster(activeCluster.Brokers, version).Connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to cluster: %w", err)
@@ -87,7 +98,10 @@ func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 	}
 	s.client = client
 	s.adminClient = adminClient
-	activeCluster.IsAuthenticated = true
+	index := s.getActiveClusterIndex()
+	if index >= 0 {
+		s.clusters[index].IsAuthenticated = true
+	}
 	return client, nil
 }
 
@@ -101,8 +115,9 @@ func (s *session) Disconnect() {
 	s.adminClient = nil
 
 	// Mark active cluster as disconnected
-	if activeCluster := s.getActiveCluster(); activeCluster != nil {
-		activeCluster.IsAuthenticated = false
+	index := s.getActiveClusterIndex()
+	if index >= 0 {
+		s.clusters[index].IsAuthenticated = false
 	}
 	fmt.Println("Logged out successfully!")
 }
@@ -124,7 +139,10 @@ func (s *session) GetAdminClient() (sarama.ClusterAdmin, error) {
 		return nil, fmt.Errorf("no active cluster selected")
 	}
 
-	version, _ := sarama.ParseKafkaVersion(activeCluster.Version)
+	version, err := sarama.ParseKafkaVersion(activeCluster.Version)
+	if err != nil {
+		return nil, fmt.Errorf("invalid kafka version: %w", err)
+	}
 	adminClient, err := cluster.NewCluster(activeCluster.Brokers, version).ConnectAdmin(ctx)
 	if err != nil {
 		return nil, err
@@ -181,7 +199,7 @@ func createDefaultSession() error {
 	return json.NewEncoder(file).Encode(sessionData)
 }
 
-func saveSession(clusterName string) error {
+func saveSession() error {
 	err := os.MkdirAll(constants.OpenKommanderFolder, 0755)
 	if err != nil {
 		return fmt.Errorf("error creating directory %s: %w", constants.OpenKommanderFolder, err)
@@ -287,7 +305,13 @@ func Login() {
 	fmt.Printf("Connecting to cluster via: %s\n", input)
 
 	// Test connection
-	kafkaVersion, _ := sarama.ParseKafkaVersion(version)
+	kafkaVersion, err := sarama.ParseKafkaVersion(version)
+	if err != nil {
+		logger.Error("Invalid Kafka version string", "version", version, "error", err)
+		fmt.Println("Failed to parse Kafka version. Please enter a valid version string (e.g., 2.1.0.0).")
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := cluster.NewCluster(tempCluster.Brokers, kafkaVersion).Connect(ctx)
@@ -296,16 +320,7 @@ func Login() {
 		fmt.Println("Logged in successfully!")
 		fmt.Printf("Kafka Version [%s]\n", version)
 
-		// Auto-discover and display all brokers in the cluster
-		brokers := client.Brokers()
-		fmt.Printf("Auto-discovered %d brokers in cluster:\n", len(brokers))
-
-		// Update cluster with all discovered brokers
-		discoveredBrokers := make([]string, 0, len(brokers))
-		for _, broker := range brokers {
-			fmt.Printf("  - Broker %d: %s\n", broker.ID(), broker.Addr())
-			discoveredBrokers = append(discoveredBrokers, broker.Addr())
-		}
+		discoveredBrokers := discoverBrokers(client)
 
 		// Update cluster with discovered brokers
 		tempCluster.Brokers = discoveredBrokers
@@ -313,7 +328,11 @@ func Login() {
 
 		// Get cluster name
 		fmt.Print("Enter a name for this cluster connection: ")
-		nameInput, _ := reader.ReadString('\n')
+		nameInput, err := reader.ReadString('\n')
+		if err != nil {
+			logger.Error("Error reading cluster name input", "error", err)
+			return
+		}
 		nameInput = strings.TrimSpace(nameInput)
 		if nameInput == "" {
 			nameInput = fmt.Sprintf("cluster-%d", len(currentSession.clusters)+1)
@@ -328,10 +347,13 @@ func Login() {
 				fmt.Printf("Updated existing cluster connection: %s\n", nameInput)
 
 				// Close the test client
-				client.Close()
+				err = client.Close()
+				if err != nil {
+					logger.Error("Error closing client", "error", err)
+				}
 
 				// Save session
-				err = saveSession(nameInput)
+				err = saveSession()
 				if err != nil {
 					logger.Error("Error saving session", "error", err)
 				}
@@ -345,14 +367,14 @@ func Login() {
 		fmt.Printf("Added new cluster connection: %s\n", nameInput)
 
 		// Close the test client
-		err := client.Close()
+		err = client.Close()
 
 		if err != nil {
 			logger.Error("Error closing client", "error", err)
 		}
 
 		// Save session
-		err = saveSession(nameInput)
+		err = saveSession()
 		if err != nil {
 			logger.Error("Error saving session", "error", err)
 		}
@@ -370,50 +392,39 @@ func LoginWithParams(brokers []string, version string, clusterName string) (bool
 	}
 
 	// Test connection
-	kafkaVersion, _ := sarama.ParseKafkaVersion(version)
+	kafkaVersion, err := sarama.ParseKafkaVersion(version)
+	if err != nil {
+		logger.Error("Invalid Kafka version string", "version", version, "error", err)
+		return false, "Invalid Kafka version string: " + err.Error()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := cluster.NewCluster(tempCluster.Brokers, kafkaVersion).Connect(ctx)
 
 	if client != nil && err == nil {
-		brokers := client.Brokers()
-
-		// Update cluster with all discovered brokers
-		discoveredBrokers := make([]string, 0, len(brokers))
-		for _, broker := range brokers {
-			discoveredBrokers = append(discoveredBrokers, broker.Addr())
-		}
+		discoveredBrokers := discoverBrokers(client)
 
 		// Update cluster with discovered brokers
 		tempCluster.Brokers = discoveredBrokers
 		tempCluster.IsAuthenticated = true
 		tempCluster.Name = clusterName
 
+		existing := false
+
 		// Check if cluster with this name already exists
 		for i, existingCluster := range currentSession.clusters {
 			if existingCluster.Name == clusterName {
 				currentSession.clusters[i] = tempCluster
 				currentSession.activeCluster = clusterName
-
-				// Close the test client
-				err = client.Close()
-
-				if err != nil {
-					logger.Error("Error closing client", "error", err)
-				}
-
-				// Save session
-				err = saveSession(clusterName)
-				if err != nil {
-					logger.Error("Error saving session", "error", err)
-				}
-				return true, "Updated existing cluster connection: " + clusterName
+				existing = true
 			}
 		}
 
-		// Add new cluster
-		currentSession.clusters = append(currentSession.clusters, tempCluster)
-		currentSession.activeCluster = clusterName
+		if !existing {
+			// Add new cluster
+			currentSession.clusters = append(currentSession.clusters, tempCluster)
+			currentSession.activeCluster = clusterName
+		}
 
 		// Close the test client
 		err = client.Close()
@@ -422,16 +433,31 @@ func LoginWithParams(brokers []string, version string, clusterName string) (bool
 		}
 
 		// Save session
-		err = saveSession(clusterName)
+		err = saveSession()
 		if err != nil {
 			logger.Error("Error saving session", "error", err)
 			return false, "Error saving session: " + err.Error()
 		}
-		return true, "Added new cluster connection: " + clusterName
+		return true, "Saved cluster connection: " + clusterName
 	} else {
 		logger.Error("Error connecting to cluster", "error", err)
 		return false, "Error connecting to cluster: " + err.Error()
 	}
+}
+
+func discoverBrokers(client sarama.Client) []string {
+	// Auto-discover and display all brokers in the cluster
+	brokers := client.Brokers()
+	fmt.Printf("Auto-discovered %d brokers in cluster:\n", len(brokers))
+
+	// Update cluster with all discovered brokers
+	discoveredBrokers := make([]string, 0, len(brokers))
+	for _, broker := range brokers {
+		fmt.Printf("  - Broker %d: %s\n", broker.ID(), broker.Addr())
+		discoveredBrokers = append(discoveredBrokers, broker.Addr())
+	}
+
+	return discoveredBrokers
 }
 
 func Logout(clusterName string) bool {
@@ -469,7 +495,7 @@ func Logout(clusterName string) bool {
 			}
 
 			// Save session
-			err := saveSession("")
+			err := saveSession()
 			if err != nil {
 				fmt.Println("Error saving session:", err)
 				return false
@@ -519,30 +545,33 @@ func ListClusters() {
 	}
 }
 
+func cleanupClients() {
+	if currentSession.client != nil {
+		err := currentSession.client.Close()
+		if err != nil {
+			logger.Error("Error closing client", "error", err)
+		}
+		currentSession.client = nil
+	}
+	if currentSession.adminClient != nil {
+		err := currentSession.adminClient.Close()
+		if err != nil {
+			logger.Error("Error closing admin client", "error", err)
+		}
+		currentSession.adminClient = nil
+	}
+}
+
 func SelectCluster(clusterName string) {
 	for _, cluster := range currentSession.clusters {
 		if cluster.Name == clusterName {
-			// Disconnect from current cluster if any
-			if currentSession.client != nil {
-				err := currentSession.client.Close()
-				if err != nil {
-					logger.Error("Error closing client", "error", err)
-				}
-				currentSession.client = nil
-			}
-			if currentSession.adminClient != nil {
-				err := currentSession.adminClient.Close()
-				if err != nil {
-					logger.Error("Error closing admin client", "error", err)
-				}
-				currentSession.adminClient = nil
-			}
+			cleanupClients()
 
 			currentSession.activeCluster = clusterName
 			fmt.Printf("Selected cluster: %s\n", clusterName)
 
 			// Save session
-			err := saveSession("")
+			err := saveSession()
 			if err != nil {
 				logger.Error("Error saving session", "error", err)
 			}

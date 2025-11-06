@@ -59,11 +59,7 @@ func listClusterConnections(cmd cobraCmd, args cobraArgs) {
 			active = "Yes"
 		}
 
-		// Join broker addresses
-		brokersStr := strings.Join(cluster.Brokers, ", ")
-		if len(brokersStr) > 50 {
-			brokersStr = brokersStr[:47] + "..."
-		}
+		brokersStr := strings.Join(cluster.Brokers, "\n")
 
 		connectionRows = append(connectionRows, []interface{}{
 			cluster.Name,
