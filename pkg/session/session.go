@@ -417,6 +417,7 @@ func LoginWithParams(brokers []string, version string, clusterName string) (bool
 				currentSession.clusters[i] = tempCluster
 				currentSession.activeCluster = clusterName
 				existing = true
+				break
 			}
 		}
 
