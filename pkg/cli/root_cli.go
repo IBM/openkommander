@@ -31,8 +31,8 @@ func (RootCommandList) GetCommands() []*OkCmd {
 			},
 		},
 		{ // Logout
-			Use:   "logout",
-			Short: "End the current session",
+			Use:   "logout [cluster-name]",
+			Short: "End a cluster session",
 			Run:   logout,
 		},
 		{ // Session info
@@ -63,7 +63,11 @@ func login(cmd cobraCmd, args cobraArgs) {
 }
 
 func logout(cmd cobraCmd, args cobraArgs) {
-	session.Logout()
+	clusterName := ""
+	if len(args) > 0 {
+		clusterName = args[0]
+	}
+	session.Logout(clusterName)
 }
 
 func getSessionInfo(cmd cobraCmd, args cobraArgs) {
