@@ -105,6 +105,37 @@ func (s *session) Connect(ctx context.Context) (sarama.Client, error) {
 	return client, nil
 }
 
+func (s *session) ConnectAdmin(ctx context.Context) (sarama.ClusterAdmin, error) {
+	if s.adminClient != nil {
+		return s.adminClient, nil
+	}
+
+	activeCluster := s.getActiveCluster()
+	if activeCluster == nil {
+		return nil, fmt.Errorf("no active cluster selected")
+	}
+
+	version, err := sarama.ParseKafkaVersion(activeCluster.Version)
+	if err != nil {
+		return nil, fmt.Errorf("invalid kafka version: %w", err)
+	}
+	client, err := cluster.NewCluster(activeCluster.Brokers, version).Connect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to cluster: %w", err)
+	}
+	adminClient, err := cluster.NewCluster(activeCluster.Brokers, version).ConnectAdmin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to cluster as admin: %w", err)
+	}
+	s.client = client
+	s.adminClient = adminClient
+	index := s.getActiveClusterIndex()
+	if index >= 0 {
+		s.clusters[index].IsAuthenticated = true
+	}
+	return adminClient, nil
+}
+
 func (s *session) Disconnect() {
 	if s.client != nil {
 		if err := s.client.Close(); err != nil {
